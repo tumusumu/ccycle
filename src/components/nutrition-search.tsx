@@ -187,12 +187,16 @@ export interface INutritionSearchProps {
   className?: string;
 }
 
+// Common foods for quick search buttons
+const QUICK_SEARCH_FOODS = ['牛肉', '鸡肉', '鱼', '虾', '鸡蛋', '米饭', '燕麦', '豆腐'];
+
 export function NutritionSearch({ onSelect, onClose, className = '' }: INutritionSearchProps) {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<INutritionResult[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [hasSearched, setHasSearched] = useState(false);
+  const [lastSearchedQuery, setLastSearchedQuery] = useState(''); // Track searched term for display
 
   // Refs for cleanup
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -228,6 +232,7 @@ export function NutritionSearch({ onSelect, onClose, className = '' }: INutritio
 
     // Translate Chinese to English for API search
     const trimmedQuery = query.trim();
+    setLastSearchedQuery(trimmedQuery); // Save for display in no-results message
     const searchQuery = translateToEnglish(trimmedQuery);
 
     // Debug logging
@@ -322,6 +327,66 @@ export function NutritionSearch({ onSelect, onClose, className = '' }: INutritio
     onClose();
   };
 
+  // Handle quick search button click
+  const handleQuickSearch = (food: string) => {
+    setQuery(food);
+    // Trigger search after state update
+    setTimeout(() => {
+      const input = document.querySelector('input[type="text"]') as HTMLInputElement;
+      if (input) {
+        input.value = food;
+        const event = new Event('input', { bubbles: true });
+        input.dispatchEvent(event);
+      }
+    }, 0);
+    // Directly perform search
+    setQuery(food);
+  };
+
+  // Effect to trigger search when query changes via quick search
+  const handleQuickSearchClick = async (food: string) => {
+    setQuery(food);
+    setLastSearchedQuery(food);
+    setIsLoading(true);
+    setError(null);
+    setHasSearched(true);
+
+    const searchQuery = translateToEnglish(food);
+    console.log('[NutritionSearch] Quick search:', food, '→', searchQuery);
+
+    try {
+      const res = await fetch(`/api/nutrition/search?q=${encodeURIComponent(searchQuery)}`);
+      if (!isMountedRef.current) return;
+
+      const data = await res.json();
+
+      if (!res.ok || !data.results || data.results.length === 0) {
+        // Try local fallback
+        const localResults = getLocalResults(searchQuery);
+        if (localResults.length > 0) {
+          setResults(localResults);
+          setError(null);
+        } else {
+          setResults([]);
+        }
+      } else {
+        setResults(data.results);
+      }
+    } catch {
+      const localResults = getLocalResults(searchQuery);
+      if (localResults.length > 0) {
+        setResults(localResults);
+        setError(null);
+      } else {
+        setResults([]);
+      }
+    } finally {
+      if (isMountedRef.current) {
+        setIsLoading(false);
+      }
+    }
+  };
+
   // Handle background click to close
   const handleBackgroundClick = (e: React.MouseEvent) => {
     if (e.target === e.currentTarget) {
@@ -381,9 +446,40 @@ export function NutritionSearch({ onSelect, onClose, className = '' }: INutritio
           )}
 
           {!error && hasSearched && results.length === 0 && !isLoading && (
-            <div className="text-center py-8 text-[#5D6D7E]">
-              <p>未找到相关食材</p>
-              <p className="text-xs mt-1">请尝试其他关键词</p>
+            <div className="bg-[#F8FAFC] rounded-xl p-5">
+              {/* Icon and Title */}
+              <div className="text-center mb-4">
+                <span className="text-4xl">🔍</span>
+                <h3 className="text-base font-medium text-[#2C3E50] mt-2">
+                  未找到「{lastSearchedQuery}」的营养数据
+                </h3>
+              </div>
+
+              {/* Search Tips */}
+              <div className="mb-4">
+                <p className="text-sm font-medium text-[#5D6D7E] mb-2">💡 搜索建议：</p>
+                <ul className="text-xs text-[#5D6D7E] space-y-1 ml-5">
+                  <li>• 尝试更通用的名称（如「鸡肉」而不是「鸡胸肉」）</li>
+                  <li>• 使用英文搜索可能获得更多结果</li>
+                  <li>• 检查是否有拼写错误</li>
+                </ul>
+              </div>
+
+              {/* Quick Search Buttons */}
+              <div>
+                <p className="text-sm font-medium text-[#5D6D7E] mb-2">📋 试试这些常用食材：</p>
+                <div className="flex flex-wrap gap-2">
+                  {QUICK_SEARCH_FOODS.map((food) => (
+                    <button
+                      key={food}
+                      onClick={() => handleQuickSearchClick(food)}
+                      className="px-3 py-1.5 text-sm border border-[#4A90D9] text-[#4A90D9] rounded-full hover:bg-[#4A90D9] hover:text-white transition-colors"
+                    >
+                      {food}
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
           )}
 
@@ -436,9 +532,25 @@ export function NutritionSearch({ onSelect, onClose, className = '' }: INutritio
           )}
 
           {!hasSearched && !isLoading && (
-            <div className="text-center py-8 text-[#5D6D7E]">
+            <div className="text-center py-4 text-[#5D6D7E]">
               <p className="text-4xl mb-2">🔍</p>
-              <p>输入食材名称开始搜索</p>
+              <p className="mb-4">输入食材名称开始搜索</p>
+
+              {/* Quick Search Buttons */}
+              <div className="mt-4">
+                <p className="text-sm text-[#AEB6BF] mb-2">或点击常用食材：</p>
+                <div className="flex flex-wrap justify-center gap-2">
+                  {QUICK_SEARCH_FOODS.map((food) => (
+                    <button
+                      key={food}
+                      onClick={() => handleQuickSearchClick(food)}
+                      className="px-3 py-1.5 text-sm border border-[#4A90D9] text-[#4A90D9] rounded-full hover:bg-[#4A90D9] hover:text-white transition-colors"
+                    >
+                      {food}
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
           )}
         </div>
