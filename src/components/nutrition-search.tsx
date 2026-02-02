@@ -138,23 +138,33 @@ export function NutritionSearch({ onSelect, onClose, className = '' }: INutritio
     setHasSearched(true);
 
     // Translate Chinese to English for API search
-    const searchQuery = translateToEnglish(query);
+    const trimmedQuery = query.trim();
+    const searchQuery = translateToEnglish(trimmedQuery);
+
+    // Debug logging
+    console.log('[NutritionSearch] Original query:', trimmedQuery);
+    console.log('[NutritionSearch] Translated query:', searchQuery);
+    console.log('[NutritionSearch] Was translated:', trimmedQuery !== searchQuery);
 
     try {
-      const res = await fetch(
-        `/api/nutrition/search?q=${encodeURIComponent(searchQuery)}`,
-        { signal: abortController.signal }
-      );
+      const url = `/api/nutrition/search?q=${encodeURIComponent(searchQuery)}`;
+      console.log('[NutritionSearch] Fetching:', url);
+
+      const res = await fetch(url, { signal: abortController.signal });
+
+      console.log('[NutritionSearch] Response status:', res.status);
 
       // Check if component is still mounted
       if (!isMountedRef.current) return;
 
       const data = await res.json();
+      console.log('[NutritionSearch] Response data:', data);
 
       // Check again after parsing JSON
       if (!isMountedRef.current) return;
 
       if (!res.ok) {
+        console.error('[NutritionSearch] API error:', data);
         if (data.code === 'RATE_LIMIT') {
           setError('API请求过于频繁，请稍后再试');
         } else {
@@ -164,6 +174,7 @@ export function NutritionSearch({ onSelect, onClose, className = '' }: INutritio
         return;
       }
 
+      console.log('[NutritionSearch] Results count:', data.results?.length || 0);
       setResults(data.results || []);
     } catch (err) {
       // Ignore abort errors
@@ -203,10 +214,11 @@ export function NutritionSearch({ onSelect, onClose, className = '' }: INutritio
 
   return (
     <div
-      className={`fixed inset-0 bg-black/50 flex items-end justify-center z-[9999] ${className}`}
+      className={`fixed inset-0 bg-black/50 z-[9999] ${className}`}
       onClick={handleBackgroundClick}
     >
-      <div className="bg-white w-full max-w-lg rounded-t-2xl max-h-[85vh] flex flex-col">
+      {/* Centered modal with responsive width */}
+      <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white w-[90vw] max-w-[500px] rounded-2xl max-h-[80vh] flex flex-col shadow-xl">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-[#E5E8EB]">
           <h2 className="text-lg font-semibold text-[#2C3E50]">搜索食材营养</h2>
