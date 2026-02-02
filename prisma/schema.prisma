@@ -1,0 +1,148 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id                String           @id @default(cuid())
+  username          String           @unique
+  birthYear         Int
+  gender            Gender
+  weight            Float
+  bodyFatPercentage Float
+  goalType          String?
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  bodyMetrics       BodyMetrics[]
+  cyclePlans        CyclePlan[]
+  exerciseRecords   ExerciseRecord[]
+}
+
+model BodyMetrics {
+  id                String   @id @default(cuid())
+  userId            String
+  date              DateTime @db.Date
+  weight            Float
+  bodyFatPercentage Float?
+  createdAt         DateTime @default(now())
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date])
+}
+
+model CyclePlan {
+  id             String          @id @default(cuid())
+  userId         String
+  startDate      DateTime        @db.Date
+  endDate        DateTime?       @db.Date
+  status         PlanStatus      @default(ACTIVE)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  cycleSummary   CycleSummary?
+  dailyMealPlans DailyMealPlan[]
+}
+
+model DailyMealPlan {
+  id                 String             @id @default(cuid())
+  cyclePlanId        String
+  date               DateTime           @db.Date
+  dayNumber          Int
+  carbDayType        CarbDayType
+  oatmealGrams       Float
+  riceGramsLunch     Float
+  riceGramsDinner    Float
+  proteinGramsMeal1  Float
+  proteinGramsMeal2  Float
+  proteinGramsMeal3  Float
+  proteinGramsMeal4  Float
+  oliveoilMl         Float
+  allowWholeEgg      Boolean
+  waterLiters        Float
+  createdAt          DateTime           @default(now())
+  proteinSourceMeal1 ProteinSource
+  proteinSourceMeal2 ProteinSource
+  proteinSourceMeal3 ProteinSource
+  proteinSourceMeal4 ProteinSource
+  intakeRecord       DailyIntakeRecord?
+  cyclePlan          CyclePlan          @relation(fields: [cyclePlanId], references: [id], onDelete: Cascade)
+
+  @@unique([cyclePlanId, date])
+}
+
+model DailyIntakeRecord {
+  id                  String        @id @default(cuid())
+  dailyMealPlanId     String        @unique
+  oatmealCompleted    Boolean       @default(false)
+  riceLunchCompleted  Boolean       @default(false)
+  riceDinnerCompleted Boolean       @default(false)
+  protein1Completed   Boolean       @default(false)
+  protein2Completed   Boolean       @default(false)
+  protein3Completed   Boolean       @default(false)
+  protein4Completed   Boolean       @default(false)
+  waterCompleted      Boolean       @default(false)
+  followedPlan        Boolean       @default(true)
+  notes               String?
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+  dailyMealPlan       DailyMealPlan @relation(fields: [dailyMealPlanId], references: [id], onDelete: Cascade)
+}
+
+model ExerciseRecord {
+  id                String   @id @default(cuid())
+  userId            String
+  date              DateTime @db.Date
+  strengthCompleted Boolean  @default(false)
+  cardioSession1    Boolean  @default(false)
+  cardioSession2    Boolean  @default(false)
+  cardioMinutes     Int?
+  notes             String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date])
+}
+
+model CycleSummary {
+  id               String     @id @default(cuid())
+  cyclePlanId      String     @unique
+  totalDays        Int
+  daysFollowed     Int
+  daysNotFollowed  Int
+  startWeight      Float
+  endWeight        Float?
+  startBodyFat     Float?
+  endBodyFat       Float?
+  notFollowedDates DateTime[] @db.Date
+  notes            String?
+  createdAt        DateTime   @default(now())
+  cyclePlan        CyclePlan  @relation(fields: [cyclePlanId], references: [id], onDelete: Cascade)
+}
+
+enum Gender {
+  MALE
+  FEMALE
+}
+
+enum CarbDayType {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum PlanStatus {
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+enum ProteinSource {
+  CHICKEN
+  BEEF
+  SHRIMP
+}

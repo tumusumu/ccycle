@@ -1,26 +1,140 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Page Background */
+  --background: #EEF2F7;
+  --foreground: #2C3E50;
+
+  /* Design System Colors */
+  --color-primary: #4A90D9;
+  --color-primary-dark: #357ABD;
+
+  /* Nutrition Colors */
+  --color-carb: #F5C542;
+  --color-protein: #E8A0BF;
+  --color-fat: #A8D5BA;
+  --color-water: #7EC8E3;
+
+  /* Status Colors */
+  --color-success: #5CB85C;
+  --color-warning: #E74C3C;
+  --color-muted: #CCCCCC;
+
+  /* Carb Day Colors */
+  --color-low-carb: #A8D5BA;
+  --color-medium-carb: #F5C542;
+  --color-high-carb: #E74C3C;
+
+  /* Text Colors */
+  --color-title: #2C3E50;
+  --color-body: #5D6D7E;
+  --color-placeholder: #AEB6BF;
+
+  /* Card */
+  --color-card: #FFFFFF;
+  --card-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  --card-radius: 16px;
+  --button-radius: 12px;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --font-mono: var(--font-geist-mono);
-}
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  /* Custom Colors */
+  --color-primary: #4A90D9;
+  --color-primary-dark: #357ABD;
+  --color-carb: #F5C542;
+  --color-protein: #E8A0BF;
+  --color-fat: #A8D5BA;
+  --color-water: #7EC8E3;
+  --color-success: #5CB85C;
+  --color-warning: #E74C3C;
+  --color-muted: #CCCCCC;
+  --color-low-carb: #A8D5BA;
+  --color-medium-carb: #F5C542;
+  --color-high-carb: #E74C3C;
+  --color-title: #2C3E50;
+  --color-body: #5D6D7E;
+  --color-placeholder: #AEB6BF;
+  --color-card: #FFFFFF;
+  --color-page-bg: #EEF2F7;
 }
 
 body {
   background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  color: var(--color-body);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  min-height: 100vh;
+}
+
+/* Typography */
+h1, h2, h3, h4, h5, h6 {
+  color: var(--color-title);
+}
+
+/* Card Base Style */
+.card {
+  background: var(--color-card);
+  border-radius: var(--card-radius);
+  box-shadow: var(--card-shadow);
+  padding: 16px;
+}
+
+/* Button Base Styles */
+.btn-primary {
+  background: var(--color-primary);
+  color: white;
+  border-radius: var(--button-radius);
+}
+
+.btn-primary:hover {
+  background: var(--color-primary-dark);
+}
+
+.btn-secondary {
+  background: white;
+  color: var(--color-primary);
+  border: 1px solid var(--color-primary);
+  border-radius: var(--button-radius);
+}
+
+/* Carb Day Badges */
+.badge-low {
+  background: var(--color-low-carb);
+  color: white;
+}
+
+.badge-medium {
+  background: var(--color-medium-carb);
+  color: white;
+}
+
+.badge-high {
+  background: var(--color-high-carb);
+  color: white;
+}
+
+/* Restricted food warning */
+.text-restricted {
+  color: var(--color-warning);
+}
+
+/* Progress bars */
+.progress-water {
+  background: var(--color-water);
+}
+
+.progress-carb {
+  background: var(--color-carb);
+}
+
+.progress-protein {
+  background: var(--color-protein);
+}
+
+.progress-fat {
+  background: var(--color-fat);
 }
