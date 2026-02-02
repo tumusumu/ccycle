@@ -10,7 +10,6 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  TooltipProps,
 } from 'recharts';
 import { Header } from '@/components/layout/header';
 import { BottomNav } from '@/components/layout/bottom-nav';
@@ -48,7 +47,13 @@ interface ChartDataPoint {
 }
 
 // Custom tooltip component
-function CustomTooltip({ active, payload, label }: TooltipProps<number, string>) {
+interface ICustomTooltipProps {
+  active?: boolean;
+  payload?: Array<{ color?: string; name?: string; value?: number }>;
+  label?: string;
+}
+
+function CustomTooltip({ active, payload, label }: ICustomTooltipProps) {
   if (active && payload && payload.length) {
     return (
       <div className="bg-white p-3 rounded-lg shadow-lg border border-[#EEF2F7]">

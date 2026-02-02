@@ -73,41 +73,13 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    if (
-      body.muscleMass !== undefined &&
-      body.muscleMass !== null &&
-      (body.muscleMass <= 0 || body.muscleMass > 150)
-    ) {
-      return NextResponse.json(
-        { error: 'Muscle mass must be between 0 and 150 kg' },
-        { status: 400 }
-      );
-    }
-
-    if (
-      body.waistCircumference !== undefined &&
-      body.waistCircumference !== null &&
-      (body.waistCircumference <= 0 || body.waistCircumference > 300)
-    ) {
-      return NextResponse.json(
-        { error: 'Waist circumference must be between 0 and 300 cm' },
-        { status: 400 }
-      );
-    }
-
     const updateData: {
       weight?: number;
       bodyFatPercentage?: number | null;
-      muscleMass?: number | null;
-      waistCircumference?: number | null;
-      note?: string | null;
     } = {};
 
     if (body.weight !== undefined) updateData.weight = body.weight;
     if (body.bodyFatPercentage !== undefined) updateData.bodyFatPercentage = body.bodyFatPercentage;
-    if (body.muscleMass !== undefined) updateData.muscleMass = body.muscleMass;
-    if (body.waistCircumference !== undefined) updateData.waistCircumference = body.waistCircumference;
-    if (body.note !== undefined) updateData.note = body.note;
 
     const metrics = await prisma.bodyMetrics.update({
       where: { id },

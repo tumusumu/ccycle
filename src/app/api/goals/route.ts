@@ -62,9 +62,6 @@ export async function GET(request: NextRequest) {
           case 'BODY_FAT':
             currentValue = latestMetrics.bodyFatPercentage;
             break;
-          case 'MUSCLE_MASS':
-            currentValue = latestMetrics.muscleMass;
-            break;
         }
       }
 
@@ -109,9 +106,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate goalType
-    if (!['WEIGHT', 'BODY_FAT', 'MUSCLE_MASS'].includes(body.goalType)) {
+    if (!['WEIGHT', 'BODY_FAT'].includes(body.goalType)) {
       return NextResponse.json(
-        { error: 'Invalid goalType. Must be WEIGHT, BODY_FAT, or MUSCLE_MASS' },
+        { error: 'Invalid goalType. Must be WEIGHT or BODY_FAT' },
         { status: 400 }
       );
     }

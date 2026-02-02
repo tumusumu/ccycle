@@ -16,7 +16,6 @@ interface TrendPoint {
   date: string;
   weight: number;
   bodyFatPercentage: number | null;
-  muscleMass: number | null;
   bmi: number | null;
 }
 
@@ -24,7 +23,6 @@ interface WeeklyAverage {
   weekStart: string;
   avgWeight: number;
   avgBodyFat: number | null;
-  avgMuscleMass: number | null;
 }
 
 export async function GET(request: NextRequest) {
@@ -84,13 +82,12 @@ export async function GET(request: NextRequest) {
       date: m.date.toISOString().split('T')[0],
       weight: m.weight,
       bodyFatPercentage: m.bodyFatPercentage,
-      muscleMass: m.muscleMass,
       bmi: user.height ? calculateBMI(m.weight, user.height)?.value ?? null : null,
     }));
 
     // Calculate weekly averages
     const weeklyAverages: WeeklyAverage[] = [];
-    const weekMap = new Map<string, { weights: number[]; bodyFats: number[]; muscleMasses: number[] }>();
+    const weekMap = new Map<string, { weights: number[]; bodyFats: number[] }>();
 
     for (const m of metrics) {
       const date = new Date(m.date);
@@ -101,13 +98,12 @@ export async function GET(request: NextRequest) {
       const weekKey = monday.toISOString().split('T')[0];
 
       if (!weekMap.has(weekKey)) {
-        weekMap.set(weekKey, { weights: [], bodyFats: [], muscleMasses: [] });
+        weekMap.set(weekKey, { weights: [], bodyFats: [] });
       }
 
       const week = weekMap.get(weekKey)!;
       week.weights.push(m.weight);
       if (m.bodyFatPercentage !== null) week.bodyFats.push(m.bodyFatPercentage);
-      if (m.muscleMass !== null) week.muscleMasses.push(m.muscleMass);
     }
 
     for (const [weekStart, data] of weekMap.entries()) {
@@ -115,15 +111,11 @@ export async function GET(request: NextRequest) {
       const avgBodyFat = data.bodyFats.length > 0
         ? data.bodyFats.reduce((a, b) => a + b, 0) / data.bodyFats.length
         : null;
-      const avgMuscleMass = data.muscleMasses.length > 0
-        ? data.muscleMasses.reduce((a, b) => a + b, 0) / data.muscleMasses.length
-        : null;
 
       weeklyAverages.push({
         weekStart,
         avgWeight: Math.round(avgWeight * 10) / 10,
         avgBodyFat: avgBodyFat !== null ? Math.round(avgBodyFat * 1000) / 1000 : null,
-        avgMuscleMass: avgMuscleMass !== null ? Math.round(avgMuscleMass * 10) / 10 : null,
       });
     }
 
@@ -147,11 +139,6 @@ export async function GET(request: NextRequest) {
       bodyFatChange: first.bodyFatPercentage && last.bodyFatPercentage
         ? Math.round((last.bodyFatPercentage - first.bodyFatPercentage) * 1000) / 1000
         : null,
-      startMuscleMass: first.muscleMass,
-      currentMuscleMass: last.muscleMass,
-      muscleMassChange: first.muscleMass && last.muscleMass
-        ? Math.round((last.muscleMass - first.muscleMass) * 10) / 10
-        : null,
       currentBMI: user.height ? calculateBMI(last.weight, user.height) : null,
     };
 
@@ -166,9 +153,6 @@ export async function GET(request: NextRequest) {
       const bodyFatTrendPerWeek = firstWeek.avgBodyFat !== null && lastWeek.avgBodyFat !== null
         ? (lastWeek.avgBodyFat - firstWeek.avgBodyFat) / (weeks - 1)
         : null;
-      const muscleTrendPerWeek = firstWeek.avgMuscleMass !== null && lastWeek.avgMuscleMass !== null
-        ? (lastWeek.avgMuscleMass - firstWeek.avgMuscleMass) / (weeks - 1)
-        : null;
 
       trends = {
         weightPerWeek: Math.round(weightTrendPerWeek * 100) / 100,
@@ -176,10 +160,6 @@ export async function GET(request: NextRequest) {
         bodyFatPerWeek: bodyFatTrendPerWeek !== null ? Math.round(bodyFatTrendPerWeek * 10000) / 10000 : null,
         bodyFatDirection: bodyFatTrendPerWeek !== null
           ? (bodyFatTrendPerWeek < -0.001 ? 'decreasing' : bodyFatTrendPerWeek > 0.001 ? 'increasing' : 'stable')
-          : null,
-        musclePerWeek: muscleTrendPerWeek !== null ? Math.round(muscleTrendPerWeek * 100) / 100 : null,
-        muscleDirection: muscleTrendPerWeek !== null
-          ? (muscleTrendPerWeek > 0.1 ? 'increasing' : muscleTrendPerWeek < -0.1 ? 'decreasing' : 'stable')
           : null,
       };
     }

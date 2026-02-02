@@ -10,7 +10,6 @@ export interface IGoalFormProps {
   onSubmit: (data: IMetricGoalInput) => void;
   currentWeight?: number;
   currentBodyFat?: number;
-  currentMuscleMass?: number;
   isLoading?: boolean;
   className?: string;
 }
@@ -18,14 +17,12 @@ export interface IGoalFormProps {
 const goalTypeOptions = [
   { value: 'WEIGHT', label: '体重目标' },
   { value: 'BODY_FAT', label: '体脂率目标' },
-  { value: 'MUSCLE_MASS', label: '肌肉量目标' },
 ];
 
 export function GoalForm({
   onSubmit,
   currentWeight,
   currentBodyFat,
-  currentMuscleMass,
   isLoading = false,
   className = '',
 }: IGoalFormProps) {
@@ -40,8 +37,8 @@ export function GoalForm({
         return currentWeight;
       case 'BODY_FAT':
         return currentBodyFat;
-      case 'MUSCLE_MASS':
-        return currentMuscleMass;
+      default:
+        return undefined;
     }
   };
 
@@ -82,8 +79,8 @@ export function GoalForm({
         return '目标体重 (kg)';
       case 'BODY_FAT':
         return '目标体脂率 (%)';
-      case 'MUSCLE_MASS':
-        return '目标肌肉量 (kg)';
+      default:
+        return '目标值';
     }
   };
 
@@ -93,8 +90,8 @@ export function GoalForm({
         return { min: 40, max: 150, step: 0.1 };
       case 'BODY_FAT':
         return { min: 5, max: 45, step: 0.1 };
-      case 'MUSCLE_MASS':
-        return { min: 20, max: 100, step: 0.1 };
+      default:
+        return { min: 0, max: 100, step: 0.1 };
     }
   };
 

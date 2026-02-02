@@ -45,9 +45,6 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         case 'BODY_FAT':
           currentValue = latestMetrics.bodyFatPercentage;
           break;
-        case 'MUSCLE_MASS':
-          currentValue = latestMetrics.muscleMass;
-          break;
       }
     }
 

@@ -76,7 +76,6 @@ export default function NewGoalPage() {
   // Use latest metrics if available, otherwise use user profile
   const currentWeight = latestMetrics?.weight ?? user?.weight;
   const currentBodyFat = latestMetrics?.bodyFatPercentage ?? user?.bodyFatPercentage;
-  const currentMuscleMass = latestMetrics?.muscleMass ?? undefined;
 
   return (
     <>
@@ -98,7 +97,6 @@ export default function NewGoalPage() {
             onSubmit={handleSubmit}
             currentWeight={currentWeight}
             currentBodyFat={currentBodyFat}
-            currentMuscleMass={currentMuscleMass}
             isLoading={isSubmitting}
           />
         </Card>
