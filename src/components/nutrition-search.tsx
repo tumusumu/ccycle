@@ -360,78 +360,69 @@ export function NutritionSearch({ onSelect, onClose, className = '' }: INutritio
       // Cancel any pending requests
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
+        abortControllerRef.current = null;
       }
     };
   }, []);
 
-  const handleSearch = useCallback(async () => {
-    if (!query.trim()) return;
+  // Unified search function - single entry point for all searches
+  const performSearch = useCallback(async (searchTerm: string) => {
+    const trimmedTerm = searchTerm.trim();
+    if (!trimmedTerm) return;
 
-    // Cancel previous request if any
+    // 1. Cancel any previous request immediately
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
+      abortControllerRef.current = null;
     }
 
-    // Create new abort controller
+    // 2. Create new abort controller for this request
     const abortController = new AbortController();
     abortControllerRef.current = abortController;
 
-    setIsLoading(true);
+    // 3. Reset state immediately
+    setResults([]);
     setError(null);
+    setIsLoading(true);
     setHasSearched(true);
+    setLastSearchedQuery(trimmedTerm);
 
-    // Translate Chinese to English for API search
-    const trimmedQuery = query.trim();
-    setLastSearchedQuery(trimmedQuery); // Save for display in no-results message
-    const searchQuery = translateToEnglish(trimmedQuery);
-
-    // Debug logging
-    console.log('[NutritionSearch] Original query:', trimmedQuery);
-    console.log('[NutritionSearch] Translated query:', searchQuery);
-    console.log('[NutritionSearch] Was translated:', trimmedQuery !== searchQuery);
+    // 4. Translate Chinese to English for API search
+    const searchQuery = translateToEnglish(trimmedTerm);
+    console.log('[NutritionSearch] Search:', trimmedTerm, '→', searchQuery);
 
     try {
       const url = `/api/nutrition/search?q=${encodeURIComponent(searchQuery)}`;
-      console.log('[NutritionSearch] Fetching:', url);
-
       const res = await fetch(url, { signal: abortController.signal });
 
-      console.log('[NutritionSearch] Response status:', res.status);
-
-      // Check if component is still mounted
-      if (!isMountedRef.current) return;
+      // Check if this request was aborted or component unmounted
+      if (!isMountedRef.current || abortController.signal.aborted) {
+        return;
+      }
 
       const data = await res.json();
-      console.log('[NutritionSearch] Response data:', data);
 
-      // Check again after parsing JSON
-      if (!isMountedRef.current) return;
+      // Check again after async operation
+      if (!isMountedRef.current || abortController.signal.aborted) {
+        return;
+      }
 
       if (!res.ok) {
-        console.error('[NutritionSearch] API error:', data);
-        // Try local fallback
+        console.log('[NutritionSearch] API error, trying local fallback');
         const localResults = getLocalResults(searchQuery);
-        console.log('[NutritionSearch] Using local fallback, found:', localResults.length);
-
         if (localResults.length > 0) {
           setResults(localResults);
-          setError(null);
         } else if (data.code === 'RATE_LIMIT') {
           setError('API请求过于频繁，请稍后再试');
-          setResults([]);
         } else {
           setError('搜索失败，请重试');
-          setResults([]);
         }
         return;
       }
 
-      console.log('[NutritionSearch] Results count:', data.results?.length || 0);
-
       // If API returns no results, try local fallback
       if (!data.results || data.results.length === 0) {
         const localResults = getLocalResults(searchQuery);
-        console.log('[NutritionSearch] API empty, trying local fallback:', localResults.length);
         if (localResults.length > 0) {
           setResults(localResults);
           return;
@@ -440,31 +431,34 @@ export function NutritionSearch({ onSelect, onClose, className = '' }: INutritio
 
       setResults(data.results || []);
     } catch (err) {
-      // Ignore abort errors
+      // Ignore abort errors - this is expected when switching searches
       if (err instanceof Error && err.name === 'AbortError') {
+        console.log('[NutritionSearch] Request aborted (expected)');
         return;
       }
-      // Only set error if still mounted
-      if (isMountedRef.current) {
-        // Try local fallback on network error
-        const localResults = getLocalResults(searchQuery);
-        console.log('[NutritionSearch] Network error, trying local fallback:', localResults.length);
 
+      // Only handle errors if still mounted and not aborted
+      if (isMountedRef.current && !abortController.signal.aborted) {
+        console.log('[NutritionSearch] Network error, trying local fallback');
+        const localResults = getLocalResults(searchQuery);
         if (localResults.length > 0) {
           setResults(localResults);
-          setError(null);
         } else {
           setError('网络错误，请检查连接后重试');
-          setResults([]);
         }
       }
     } finally {
-      // Only update loading state if still mounted
-      if (isMountedRef.current) {
+      // Only update loading state if still mounted and this is the current request
+      if (isMountedRef.current && abortControllerRef.current === abortController) {
         setIsLoading(false);
       }
     }
-  }, [query]);
+  }, []);
+
+  // Wrapper for search button click
+  const handleSearch = useCallback(() => {
+    performSearch(query);
+  }, [query, performSearch]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
@@ -477,72 +471,11 @@ export function NutritionSearch({ onSelect, onClose, className = '' }: INutritio
     onClose();
   };
 
-  // Handle quick search button click with proper abort handling
-  const handleQuickSearchClick = async (food: string) => {
-    // Cancel any previous request
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-    }
-
-    // Create new abort controller for this request
-    const abortController = new AbortController();
-    abortControllerRef.current = abortController;
-
-    setQuery(food);
-    setLastSearchedQuery(food);
-    setIsLoading(true);
-    setError(null);
-    setHasSearched(true);
-
-    const searchQuery = translateToEnglish(food);
-    console.log('[NutritionSearch] Quick search:', food, '→', searchQuery);
-
-    try {
-      const res = await fetch(
-        `/api/nutrition/search?q=${encodeURIComponent(searchQuery)}`,
-        { signal: abortController.signal }
-      );
-
-      // Check if still mounted and not aborted
-      if (!isMountedRef.current) return;
-
-      const data = await res.json();
-
-      if (!isMountedRef.current) return;
-
-      if (!res.ok || !data.results || data.results.length === 0) {
-        // Try local fallback
-        const localResults = getLocalResults(searchQuery);
-        if (localResults.length > 0) {
-          setResults(localResults);
-          setError(null);
-        } else {
-          setResults([]);
-        }
-      } else {
-        setResults(data.results);
-      }
-    } catch (err) {
-      // Ignore abort errors
-      if (err instanceof Error && err.name === 'AbortError') {
-        return;
-      }
-      // Try local fallback on error
-      if (isMountedRef.current) {
-        const localResults = getLocalResults(searchQuery);
-        if (localResults.length > 0) {
-          setResults(localResults);
-          setError(null);
-        } else {
-          setResults([]);
-        }
-      }
-    } finally {
-      if (isMountedRef.current) {
-        setIsLoading(false);
-      }
-    }
-  };
+  // Handle quick search button click - uses unified performSearch
+  const handleQuickSearchClick = useCallback((food: string) => {
+    setQuery(food); // Update input field
+    performSearch(food); // Use unified search function
+  }, [performSearch]);
 
   // Handle background click to close
   const handleBackgroundClick = (e: React.MouseEvent) => {
