@@ -84,7 +84,7 @@
 
 1. **克隆项目**
 ```bash
-git clone https://github.com/your-username/ccycle.git
+git clone https://github.com/tumusumu/ccycle.git
 cd ccycle
 ```
 
@@ -95,7 +95,12 @@ npm install
 
 3. **配置环境变量**
 
-创建 `.env` 文件：
+复制 `.env.example` 为 `.env` 并填入实际值：
+```bash
+cp .env.example .env
+```
+
+编辑 `.env` 文件：
 ```env
 # 数据库连接
 DATABASE_URL="postgresql://user:password@localhost:5432/ccycle"
@@ -243,8 +248,8 @@ chore: 构建/配置相关
 
 如有问题或建议，欢迎通过以下方式联系：
 
-- **项目主页**: [https://ccycle.app](https://ccycle.app)
-- **问题反馈**: [GitHub Issues](https://github.com/your-username/ccycle/issues)
+- **项目地址**: [https://github.com/tumusumu/ccycle](https://github.com/tumusumu/ccycle)
+- **问题反馈**: [GitHub Issues](https://github.com/tumusumu/ccycle/issues)
 
 ---
 
