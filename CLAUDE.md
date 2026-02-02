@@ -57,7 +57,7 @@ src/
 - 文件名：kebab-case (如 `daily-plan.tsx`)
 - 接口/类型名：PascalCase，以 `I` 开头 (如 `IUserProfile`)
 - 工具函数：camelCase
-- 常量：UPPER_SNAKE_CASE
+- 常量：UPPER\_SNAKE\_CASE
 - 严格使用 TypeScript 类型，禁止 `any`
 - 组件必须导出类型清晰的 props 接口
 
@@ -124,3 +124,5 @@ npx prisma migrate   # 运行数据库迁移
 - [ ] 每日饮食方案生成
 - [ ] 饮食摄入记录与追踪
 - [ ] 仪表板与数据展示
+
+UI设计规范参考 UI_DESIGN.md

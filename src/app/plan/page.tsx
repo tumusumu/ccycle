@@ -13,6 +13,7 @@ import { ProgressBar } from '@/components/ui/progress-bar';
 import { getPatternName, getCarbDayTypeName } from '@/utils/carbon-cycle';
 import { formatDateCN } from '@/utils/date';
 import { TCarbDayType } from '@/types/plan';
+import { useIntake } from '@/context/intake-context';
 
 interface PlanData {
   id: string;
@@ -38,8 +39,22 @@ const carbDayBadgeVariant: Record<TCarbDayType, 'low' | 'medium' | 'high'> = {
 
 export default function PlanPage() {
   const router = useRouter();
+  const { intake } = useIntake();
   const [plan, setPlan] = useState<PlanData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+
+  // Calculate today's completion
+  const todayCompleted = [
+    intake.breakfastCompleted,
+    intake.lunchCompleted,
+    intake.snackCompleted,
+    intake.dinnerCompleted,
+    intake.strengthCompleted,
+    intake.cardioCompleted,
+  ].filter(Boolean).length;
+
+  const todayTotal = 6;
+  const todayPercentage = Math.round((todayCompleted / todayTotal) * 100);
 
   const fetchPlan = useCallback(async () => {
     try {
@@ -124,17 +139,37 @@ export default function PlanPage() {
               <span className="text-[#5D6D7E]">开始日期</span>
               <span className="font-medium text-[#2C3E50]">{formatDateCN(startDate, 'long')}</span>
             </div>
-            <div className="flex justify-between py-2">
+            <div className="flex justify-between py-2 border-b border-[#EEF2F7]">
               <span className="text-[#5D6D7E]">当前进度</span>
               <span className="font-medium text-[#2C3E50]">
                 第 {plan.totalDaysElapsed} / {plan.totalDays} 天
               </span>
             </div>
+            <div className="flex justify-between py-2">
+              <span className="text-[#5D6D7E]">今日完成</span>
+              <span className="font-medium text-[#2C3E50]">
+                {todayCompleted}/{todayTotal} ({todayPercentage}%)
+              </span>
+            </div>
+          </div>
+
+          {/* Today's completion progress bar */}
+          <div className="mt-4">
+            <div className="flex justify-between text-xs text-[#5D6D7E] mb-1">
+              <span>今日进度</span>
+              <span>{todayCompleted}/{todayTotal}</span>
+            </div>
+            <div className="w-full h-2 bg-[#E8F5E9] rounded-full overflow-hidden">
+              <div
+                className="h-full bg-[#4CAF50] rounded-full transition-all duration-500"
+                style={{ width: `${todayPercentage}%` }}
+              />
+            </div>
           </div>
 
           <ProgressBar
             value={plan.completionPercentage}
-            label="完成度"
+            label="总体完成度"
             showPercentage
             color="green"
             className="mt-4"
@@ -154,7 +189,7 @@ export default function PlanPage() {
                   key={day.dayNumber}
                   className={`
                     flex items-center justify-between py-2 px-3 rounded-lg
-                    ${isToday ? 'bg-[#EEF2F7] ring-1 ring-[#4A90D9]' : ''}
+                    ${isToday ? 'bg-blue-50 ring-1 ring-[#4A90D9]' : ''}
                   `}
                 >
                   <div className="flex items-center gap-3">
@@ -167,12 +202,26 @@ export default function PlanPage() {
                       </span>
                     )}
                   </div>
-                  <Badge
-                    variant={carbDayBadgeVariant[day.carbDayType]}
-                    size="sm"
-                  >
-                    {getCarbDayTypeName(day.carbDayType)}
-                  </Badge>
+                  <div className="flex items-center gap-2">
+                    {/* Today's completion badge */}
+                    {isToday && (
+                      todayCompleted === todayTotal ? (
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 font-medium">
+                          🎉 全部完成
+                        </span>
+                      ) : (
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-700 font-medium">
+                          ✅ {todayCompleted}/{todayTotal}
+                        </span>
+                      )
+                    )}
+                    <Badge
+                      variant={carbDayBadgeVariant[day.carbDayType]}
+                      size="sm"
+                    >
+                      {getCarbDayTypeName(day.carbDayType)}
+                    </Badge>
+                  </div>
                 </div>
               );
             })}
