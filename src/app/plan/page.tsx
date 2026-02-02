@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Header } from '@/components/layout/header';
@@ -13,7 +13,7 @@ import { ProgressBar } from '@/components/ui/progress-bar';
 import { getPatternName, getCarbDayTypeName } from '@/utils/carbon-cycle';
 import { formatDateCN } from '@/utils/date';
 import { TCarbDayType } from '@/types/plan';
-import { useIntake } from '@/context/intake-context';
+import { useIntake, IMealIntake } from '@/context/intake-context';
 
 interface PlanData {
   id: string;
@@ -37,11 +37,42 @@ const carbDayBadgeVariant: Record<TCarbDayType, 'low' | 'medium' | 'high'> = {
   HIGH: 'high',
 };
 
+// Get completion count for a specific date from localStorage
+function getCompletionForDate(dateStr: string): number {
+  if (typeof window === 'undefined') return 0;
+
+  try {
+    const stored = localStorage.getItem(`intake-${dateStr}`);
+    if (!stored) return 0;
+
+    const data = JSON.parse(stored) as IMealIntake;
+    return [
+      data.breakfastCompleted,
+      data.lunchCompleted,
+      data.snackCompleted,
+      data.dinnerCompleted,
+      data.strengthCompleted,
+      data.cardioCompleted,
+    ].filter(Boolean).length;
+  } catch {
+    return 0;
+  }
+}
+
+// Check if a date is fully completed (6/6)
+function isDayFullyCompleted(dateStr: string): boolean {
+  return getCompletionForDate(dateStr) === 6;
+}
+
 export default function PlanPage() {
   const router = useRouter();
   const { intake } = useIntake();
   const [plan, setPlan] = useState<PlanData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [completedDays, setCompletedDays] = useState(0);
+
+  // Today's date string
+  const todayStr = new Date().toISOString().split('T')[0];
 
   // Calculate today's completion
   const todayCompleted = [
@@ -77,24 +108,55 @@ export default function PlanPage() {
     fetchPlan();
   }, [fetchPlan]);
 
+  // Calculate completed days from localStorage
+  useEffect(() => {
+    if (!plan) return;
+
+    const startDate = new Date(plan.startDate);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    let count = 0;
+    const currentDate = new Date(startDate);
+
+    while (currentDate < today) {
+      const dateStr = currentDate.toISOString().split('T')[0];
+      if (isDayFullyCompleted(dateStr)) {
+        count++;
+      }
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
+
+    // Add today if fully completed
+    if (todayCompleted === 6) {
+      count++;
+    }
+
+    setCompletedDays(count);
+  }, [plan, todayCompleted]);
+
   const handleRestart = async () => {
     if (!confirm('确定要重新开始计划吗?当前计划将被取消。')) {
       return;
     }
 
     try {
-      // Cancel current plan
       if (plan) {
         await fetch(`/api/plan/${plan.id}`, {
           method: 'DELETE',
         });
       }
-      // Redirect to onboarding
       router.push('/onboarding');
     } catch (err) {
       console.error('Failed to restart:', err);
     }
   };
+
+  // Calculate overall completion percentage
+  const overallPercentage = useMemo(() => {
+    if (!plan) return 0;
+    return Math.round((completedDays / plan.totalDays) * 100);
+  }, [plan, completedDays]);
 
   if (isLoading) {
     return (
@@ -167,13 +229,19 @@ export default function PlanPage() {
             </div>
           </div>
 
-          <ProgressBar
-            value={plan.completionPercentage}
-            label="总体完成度"
-            showPercentage
-            color="green"
-            className="mt-4"
-          />
+          {/* Overall completion progress bar */}
+          <div className="mt-4">
+            <div className="flex justify-between text-xs text-[#5D6D7E] mb-1">
+              <span>总体完成度</span>
+              <span>{completedDays}/{plan.totalDays} 天 ({overallPercentage}%)</span>
+            </div>
+            <div className="w-full h-2 bg-[#E8F5E9] rounded-full overflow-hidden">
+              <div
+                className="h-full bg-[#2E7D32] rounded-full transition-all duration-500"
+                style={{ width: `${overallPercentage}%` }}
+              />
+            </div>
+          </div>
         </Card>
 
         {/* Upcoming Days */}
@@ -182,7 +250,16 @@ export default function PlanPage() {
           <div className="space-y-2">
             {upcomingDays.map((day) => {
               const isToday = day.dayNumber === plan.totalDaysElapsed;
+              const isPast = day.dayNumber < plan.totalDaysElapsed;
               const date = new Date(day.date);
+              const dateStr = day.date;
+
+              // Get completion for this day
+              const dayCompletion = isToday
+                ? todayCompleted
+                : isPast
+                  ? getCompletionForDate(dateStr)
+                  : 0;
 
               return (
                 <div
@@ -190,6 +267,7 @@ export default function PlanPage() {
                   className={`
                     flex items-center justify-between py-2 px-3 rounded-lg
                     ${isToday ? 'bg-blue-50 ring-1 ring-[#4A90D9]' : ''}
+                    ${isPast ? 'opacity-75' : ''}
                   `}
                 >
                   <div className="flex items-center gap-3">
@@ -203,15 +281,15 @@ export default function PlanPage() {
                     )}
                   </div>
                   <div className="flex items-center gap-2">
-                    {/* Today's completion badge */}
-                    {isToday && (
-                      todayCompleted === todayTotal ? (
+                    {/* Only show completion badge for today and past dates */}
+                    {(isToday || isPast) && (
+                      dayCompletion === 6 ? (
                         <span className="text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 font-medium">
                           🎉 全部完成
                         </span>
                       ) : (
                         <span className="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-700 font-medium">
-                          ✅ {todayCompleted}/{todayTotal}
+                          ✅ {dayCompletion}/{todayTotal}
                         </span>
                       )
                     )}
