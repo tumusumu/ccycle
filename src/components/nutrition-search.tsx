@@ -4,6 +4,83 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 
+// Chinese to English food name mapping for API search
+const FOOD_NAME_MAP: Record<string, string> = {
+  // Meat
+  '牛肉': 'beef',
+  '鸡肉': 'chicken',
+  '鸡胸肉': 'chicken breast',
+  '鸡腿': 'chicken thigh',
+  '猪肉': 'pork',
+  '猪里脊': 'pork tenderloin',
+  '羊肉': 'lamb',
+  // Seafood
+  '三文鱼': 'salmon',
+  '鱼': 'fish',
+  '虾': 'shrimp',
+  '虾仁': 'shrimp',
+  '金枪鱼': 'tuna',
+  '鳕鱼': 'cod',
+  '带鱼': 'hairtail fish',
+  '鲈鱼': 'sea bass',
+  // Grains
+  '燕麦': 'oatmeal',
+  '米饭': 'rice cooked',
+  '糙米': 'brown rice',
+  '面条': 'noodles',
+  '面包': 'bread',
+  '馒头': 'steamed bun',
+  // Eggs & Dairy
+  '鸡蛋': 'egg',
+  '蛋白': 'egg white',
+  '牛奶': 'milk',
+  '酸奶': 'yogurt',
+  '奶酪': 'cheese',
+  // Vegetables
+  '西兰花': 'broccoli',
+  '菠菜': 'spinach',
+  '生菜': 'lettuce',
+  '番茄': 'tomato',
+  '西红柿': 'tomato',
+  '黄瓜': 'cucumber',
+  '胡萝卜': 'carrot',
+  '土豆': 'potato',
+  '红薯': 'sweet potato',
+  '紫薯': 'purple sweet potato',
+  // Legumes & Nuts
+  '豆腐': 'tofu',
+  '豆浆': 'soy milk',
+  '花生': 'peanut',
+  '杏仁': 'almond',
+  '核桃': 'walnut',
+  // Protein supplements
+  '蛋白粉': 'whey protein',
+  '乳清蛋白': 'whey protein',
+};
+
+/**
+ * Translate Chinese food name to English for API search
+ * Returns original query if no translation found
+ */
+function translateToEnglish(query: string): string {
+  const trimmed = query.trim();
+
+  // Check for exact match
+  if (FOOD_NAME_MAP[trimmed]) {
+    return FOOD_NAME_MAP[trimmed];
+  }
+
+  // Check for partial match (if query contains a known Chinese word)
+  for (const [chinese, english] of Object.entries(FOOD_NAME_MAP)) {
+    if (trimmed.includes(chinese)) {
+      return trimmed.replace(chinese, english);
+    }
+  }
+
+  // Return original if no translation needed
+  return trimmed;
+}
+
 export interface INutritionResult {
   fdcId: number;
   foodName: string;
@@ -60,9 +137,12 @@ export function NutritionSearch({ onSelect, onClose, className = '' }: INutritio
     setError(null);
     setHasSearched(true);
 
+    // Translate Chinese to English for API search
+    const searchQuery = translateToEnglish(query);
+
     try {
       const res = await fetch(
-        `/api/nutrition/search?q=${encodeURIComponent(query.trim())}`,
+        `/api/nutrition/search?q=${encodeURIComponent(searchQuery)}`,
         { signal: abortController.signal }
       );
 
@@ -146,7 +226,7 @@ export function NutritionSearch({ onSelect, onClose, className = '' }: INutritio
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="输入食材名称（英文效果更好）"
+              placeholder="输入食材名称（中英文均可）"
               className="flex-1 px-4 py-3 border border-[#CCCCCC] rounded-lg text-base"
               autoFocus
             />
@@ -159,7 +239,7 @@ export function NutritionSearch({ onSelect, onClose, className = '' }: INutritio
             </Button>
           </div>
           <p className="text-xs text-[#AEB6BF] mt-2">
-            提示：使用英文搜索更准确，如 &quot;chicken breast&quot;, &quot;beef&quot;, &quot;salmon&quot;
+            提示：支持中文搜索，如「鸡胸肉」「牛肉」「三文鱼」
           </p>
         </div>
 
