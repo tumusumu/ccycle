@@ -9,6 +9,7 @@ export interface IUserProfile {
   username: string;
   birthYear: number;
   gender: TGender;
+  height?: number; // cm - for BMI calculation
   weight: number; // kg
   bodyFatPercentage: number; // decimal 0-1 (e.g., 0.25 = 25%)
   goalType?: string;
@@ -20,6 +21,7 @@ export interface IUserProfileInput {
   username: string;
   birthYear: number;
   gender: TGender;
+  height?: number; // cm
   weight: number;
   bodyFatPercentage: number;
   goalType?: string;
@@ -27,6 +29,7 @@ export interface IUserProfileInput {
 
 export interface IUserProfileUpdate {
   gender?: TGender;
+  height?: number; // cm
   weight?: number;
   bodyFatPercentage?: number;
   goalType?: string;
@@ -38,12 +41,18 @@ export interface IBodyMetrics {
   date: Date;
   weight: number;
   bodyFatPercentage?: number;
+  muscleMass?: number; // kg
+  waistCircumference?: number; // cm
+  note?: string;
   createdAt: Date;
 }
 
 export interface IBodyMetricsInput {
   weight: number;
   bodyFatPercentage?: number;
+  muscleMass?: number; // kg
+  waistCircumference?: number; // cm
+  note?: string;
   date?: Date; // defaults to today
 }
 
@@ -55,4 +64,42 @@ export interface IBodyMetricsHistory {
   startBodyFat?: number;
   currentBodyFat?: number;
   bodyFatChange?: number;
+}
+
+// Goal types
+export type TGoalType = 'WEIGHT' | 'BODY_FAT' | 'MUSCLE_MASS';
+export type TGoalStatus = 'ACTIVE' | 'ACHIEVED' | 'CANCELLED';
+
+export interface IMetricGoal {
+  id: string;
+  userId: string;
+  goalType: TGoalType;
+  targetValue: number;
+  startValue: number;
+  startDate: Date;
+  targetDate?: Date;
+  achievedAt?: Date;
+  status: TGoalStatus;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface IMetricGoalInput {
+  goalType: TGoalType;
+  targetValue: number;
+  startValue: number;
+  targetDate?: Date;
+}
+
+export interface IMetricGoalUpdate {
+  targetValue?: number;
+  targetDate?: Date;
+  status?: TGoalStatus;
+}
+
+// BMI calculation helper types
+export interface IBMIResult {
+  value: number;
+  category: 'underweight' | 'normal' | 'overweight' | 'obese';
+  categoryLabel: string; // Chinese label
 }

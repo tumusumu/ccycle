@@ -88,6 +88,7 @@ export async function POST(request: NextRequest) {
         username: body.username,
         birthYear: body.birthYear,
         gender: body.gender,
+        height: body.height,
         weight: body.weight,
         bodyFatPercentage: body.bodyFatPercentage,
         goalType: body.goalType ?? 'fat_loss',
@@ -121,6 +122,13 @@ export async function PUT(request: NextRequest) {
     }
 
     // Validate values if provided
+    if (body.height !== undefined && (body.height <= 0 || body.height > 300)) {
+      return NextResponse.json(
+        { error: 'Height must be between 0 and 300 cm' },
+        { status: 400 }
+      );
+    }
+
     if (body.weight !== undefined && (body.weight <= 0 || body.weight > 300)) {
       return NextResponse.json(
         { error: 'Weight must be between 0 and 300 kg' },
@@ -142,6 +150,7 @@ export async function PUT(request: NextRequest) {
       where: { id: existingUser.id },
       data: {
         ...(body.gender && { gender: body.gender }),
+        ...(body.height !== undefined && { height: body.height }),
         ...(body.weight && { weight: body.weight }),
         ...(body.bodyFatPercentage !== undefined && {
           bodyFatPercentage: body.bodyFatPercentage,
