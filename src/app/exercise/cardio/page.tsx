@@ -6,21 +6,13 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useIntake } from '@/context/intake-context';
 import { TCarbDayType } from '@/types/plan';
+import { getReferencePortions } from '@/lib/nutrition-calculator';
 
-interface IReferences {
-  min: number;
-  max: number;
-  type: string;
-}
-
-function getReferences(carbDayType: TCarbDayType): IReferences {
-  if (carbDayType === 'LOW') {
-    return { min: 20, max: 30, type: '低强度' };
-  } else if (carbDayType === 'MEDIUM') {
-    return { min: 30, max: 30, type: '中强度' };
-  } else {
-    return { min: 30, max: 45, type: '高强度' };
-  }
+// Cardio intensity type based on carb day
+function getCardioIntensityType(carbDayType: TCarbDayType): string {
+  if (carbDayType === 'LOW') return '低强度';
+  if (carbDayType === 'MEDIUM') return '中强度';
+  return '高强度';
 }
 
 export default function CardioPage() {
@@ -53,11 +45,11 @@ export default function CardioPage() {
   // Initialize form with existing intake or reference values
   useEffect(() => {
     if (!isLoading) {
-      const refs = getReferences(carbDayType);
+      const refs = getReferencePortions(carbDayType);
       if (intake.cardioCompleted) {
         setMinutes(intake.cardioMinutes);
       } else {
-        setMinutes(refs.min);
+        setMinutes(refs.cardioMin);
       }
     }
   }, [isLoading, carbDayType, intake.cardioCompleted, intake.cardioMinutes]);
@@ -70,7 +62,8 @@ export default function CardioPage() {
     router.push('/dashboard');
   };
 
-  const refs = getReferences(carbDayType);
+  const refs = getReferencePortions(carbDayType);
+  const intensityType = getCardioIntensityType(carbDayType);
 
   if (isLoading) {
     return (
@@ -98,13 +91,13 @@ export default function CardioPage() {
           <div className="text-center mb-6">
             <span className="text-4xl">🏃</span>
             <h2 className="text-lg font-semibold text-[#2C3E50] mt-2">有氧训练</h2>
-            <p className="text-sm text-[#5D6D7E]">{refs.type}</p>
+            <p className="text-sm text-[#5D6D7E]">{intensityType}</p>
           </div>
 
           <div className="mb-4">
             <label className="text-sm font-medium text-[#2C3E50]">训练时长</label>
             <p className="text-xs text-[#4A90D9] mt-1">
-              建议 {refs.min}{refs.min !== refs.max ? `-${refs.max}` : ''} 分钟
+              建议 {refs.cardioMin}{refs.cardioMin !== refs.cardioMax ? `-${refs.cardioMax}` : ''} 分钟
             </p>
           </div>
           <div className="flex items-center gap-2">

@@ -6,21 +6,7 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useIntake } from '@/context/intake-context';
 import { TCarbDayType } from '@/types/plan';
-
-interface IReferences {
-  min: number;
-  max: number;
-}
-
-function getReferences(carbDayType: TCarbDayType): IReferences {
-  if (carbDayType === 'LOW') {
-    return { min: 40, max: 50 };
-  } else if (carbDayType === 'MEDIUM') {
-    return { min: 45, max: 60 };
-  } else {
-    return { min: 60, max: 60 };
-  }
-}
+import { getReferencePortions } from '@/lib/nutrition-calculator';
 
 export default function StrengthPage() {
   const router = useRouter();
@@ -52,11 +38,11 @@ export default function StrengthPage() {
   // Initialize form with existing intake or reference values
   useEffect(() => {
     if (!isLoading) {
-      const refs = getReferences(carbDayType);
+      const refs = getReferencePortions(carbDayType);
       if (intake.strengthCompleted) {
         setMinutes(intake.strengthMinutes);
       } else {
-        setMinutes(refs.min);
+        setMinutes(refs.strengthMin);
       }
     }
   }, [isLoading, carbDayType, intake.strengthCompleted, intake.strengthMinutes]);
@@ -69,7 +55,7 @@ export default function StrengthPage() {
     router.push('/dashboard');
   };
 
-  const refs = getReferences(carbDayType);
+  const refs = getReferencePortions(carbDayType);
 
   if (isLoading) {
     return (
@@ -102,7 +88,7 @@ export default function StrengthPage() {
           <div className="mb-4">
             <label className="text-sm font-medium text-[#2C3E50]">训练时长</label>
             <p className="text-xs text-[#4A90D9] mt-1">
-              建议 {refs.min}{refs.min !== refs.max ? `-${refs.max}` : ''} 分钟
+              建议 {refs.strengthMin}{refs.strengthMin !== refs.strengthMax ? `-${refs.strengthMax}` : ''} 分钟
             </p>
           </div>
           <div className="flex items-center gap-2">

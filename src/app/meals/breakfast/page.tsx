@@ -6,21 +6,7 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useIntake } from '@/context/intake-context';
 import { TCarbDayType } from '@/types/plan';
-
-interface IReferences {
-  oatmeal: number;
-  wholeEggs: number;
-  whiteOnlyEggs: number;
-}
-
-function getReferences(carbDayType: TCarbDayType): IReferences {
-  // Same reference values for all carb day types for breakfast
-  return {
-    oatmeal: 40,
-    wholeEggs: 2,
-    whiteOnlyEggs: 1,
-  };
-}
+import { getReferencePortions } from '@/lib/nutrition-calculator';
 
 export default function BreakfastPage() {
   const router = useRouter();
@@ -54,7 +40,7 @@ export default function BreakfastPage() {
   // Initialize form with existing intake or reference values
   useEffect(() => {
     if (!isLoading) {
-      const refs = getReferences(carbDayType);
+      const refs = getReferencePortions(carbDayType);
       if (intake.breakfastCompleted) {
         setOatmealGrams(intake.oatmealGrams);
         setWholeEggs(intake.wholeEggs);
@@ -77,7 +63,7 @@ export default function BreakfastPage() {
     router.push('/dashboard');
   };
 
-  const refs = getReferences(carbDayType);
+  const refs = getReferencePortions(carbDayType);
 
   if (isLoading) {
     return (

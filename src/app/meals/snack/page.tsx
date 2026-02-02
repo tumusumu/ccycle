@@ -7,21 +7,7 @@ import { Button } from '@/components/ui/button';
 import { useIntake } from '@/context/intake-context';
 import { TCarbDayType } from '@/types/plan';
 import { SNACK_PROTEIN_OPTIONS, PROTEIN_DEFAULT_GRAMS, FOOD_NAMES } from '@/constants/nutrition';
-
-interface IReferences {
-  rice: number;
-}
-
-function getReferences(carbDayType: TCarbDayType): IReferences {
-  if (carbDayType === 'LOW') {
-    return { rice: 40 };
-  } else if (carbDayType === 'MEDIUM') {
-    return { rice: 50 };
-  } else {
-    // HIGH carb day: no rice for snack
-    return { rice: 0 };
-  }
-}
+import { getReferencePortions } from '@/lib/nutrition-calculator';
 
 export default function SnackPage() {
   const router = useRouter();
@@ -55,13 +41,13 @@ export default function SnackPage() {
   // Initialize form with existing intake or reference values
   useEffect(() => {
     if (!isLoading) {
-      const refs = getReferences(carbDayType);
+      const refs = getReferencePortions(carbDayType);
       if (intake.snackCompleted) {
         setRiceGrams(intake.snackRiceGrams);
         setProteinType(intake.snackMeatType);
         setProteinGrams(intake.snackMeatGrams);
       } else {
-        setRiceGrams(refs.rice);
+        setRiceGrams(refs.snackRice);
         setProteinType('proteinPowder'); // default to protein powder
         setProteinGrams(PROTEIN_DEFAULT_GRAMS.proteinPowder);
       }
@@ -86,7 +72,7 @@ export default function SnackPage() {
     router.push('/dashboard');
   };
 
-  const refs = getReferences(carbDayType);
+  const refs = getReferencePortions(carbDayType);
 
   // Get reference text for current protein type
   const getProteinRefText = () => {
@@ -117,11 +103,11 @@ export default function SnackPage() {
 
       <div className="pt-14 pb-24 px-4">
         {/* Rice Section - only show if not HIGH carb day */}
-        {refs.rice > 0 && (
+        {refs.snackRice > 0 && (
           <Card className="mt-4 !p-4">
             <div className="mb-4">
               <label className="text-sm font-medium text-[#2C3E50]">米饭（熟重）</label>
-              <p className="text-xs text-[#4A90D9] mt-1">参考 {refs.rice}g</p>
+              <p className="text-xs text-[#4A90D9] mt-1">参考 {refs.snackRice}g</p>
             </div>
             <div className="flex items-center gap-2">
               <input
@@ -138,7 +124,7 @@ export default function SnackPage() {
         )}
 
         {/* HIGH carb day notice */}
-        {refs.rice === 0 && (
+        {refs.snackRice === 0 && (
           <Card className="mt-4 !p-4 bg-[#FFF3E0]">
             <p className="text-sm text-[#E65100]">
               高碳日加餐不需要米饭，仅摄入蛋白质即可。

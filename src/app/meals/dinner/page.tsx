@@ -7,22 +7,7 @@ import { Button } from '@/components/ui/button';
 import { useIntake } from '@/context/intake-context';
 import { TCarbDayType } from '@/types/plan';
 import { MEAT_OPTIONS } from '@/constants/nutrition';
-
-interface IReferences {
-  rice: number;
-  meat: number;
-}
-
-// Protein: ~22g per meal, meat ~100g provides 20-23g protein
-function getReferences(carbDayType: TCarbDayType): IReferences {
-  if (carbDayType === 'LOW') {
-    return { rice: 60, meat: 100 };
-  } else if (carbDayType === 'MEDIUM') {
-    return { rice: 100, meat: 100 };
-  } else {
-    return { rice: 180, meat: 100 };
-  }
-}
+import { getReferencePortions } from '@/lib/nutrition-calculator';
 
 export default function DinnerPage() {
   const router = useRouter();
@@ -56,15 +41,15 @@ export default function DinnerPage() {
   // Initialize form with existing intake or reference values
   useEffect(() => {
     if (!isLoading) {
-      const refs = getReferences(carbDayType);
+      const refs = getReferencePortions(carbDayType);
       if (intake.dinnerCompleted) {
         setRiceGrams(intake.dinnerRiceGrams);
         setMeatType(intake.dinnerMeatType);
         setMeatGrams(intake.dinnerMeatGrams);
       } else {
-        setRiceGrams(refs.rice);
+        setRiceGrams(refs.dinnerRice);
         setMeatType('chicken'); // default to chicken
-        setMeatGrams(refs.meat);
+        setMeatGrams(refs.dinnerMeat);
       }
     }
   }, [isLoading, carbDayType, intake.dinnerCompleted, intake.dinnerRiceGrams, intake.dinnerMeatType, intake.dinnerMeatGrams]);
@@ -79,7 +64,7 @@ export default function DinnerPage() {
     router.push('/dashboard');
   };
 
-  const refs = getReferences(carbDayType);
+  const refs = getReferencePortions(carbDayType);
 
   if (isLoading) {
     return (
@@ -106,7 +91,7 @@ export default function DinnerPage() {
         <Card className="mt-4 !p-4">
           <div className="mb-4">
             <label className="text-sm font-medium text-[#2C3E50]">米饭（熟重）</label>
-            <p className="text-xs text-[#4A90D9] mt-1">参考 {refs.rice}g</p>
+            <p className="text-xs text-[#4A90D9] mt-1">参考 {refs.dinnerRice}g</p>
           </div>
           <div className="flex items-center gap-2">
             <input
@@ -125,7 +110,7 @@ export default function DinnerPage() {
         <Card className="mt-4 !p-4">
           <div className="mb-4">
             <label className="text-sm font-medium text-[#2C3E50]">肉菜（生重）</label>
-            <p className="text-xs text-[#4A90D9] mt-1">参考 约{refs.meat}g（提供约22g蛋白质）</p>
+            <p className="text-xs text-[#4A90D9] mt-1">参考 约{refs.dinnerMeat}g（提供约22g蛋白质）</p>
           </div>
 
           {/* Meat Type Selection */}
