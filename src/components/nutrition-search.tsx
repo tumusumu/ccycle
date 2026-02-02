@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 
@@ -28,16 +28,51 @@ export function NutritionSearch({ onSelect, onClose, className = '' }: INutritio
   const [error, setError] = useState<string | null>(null);
   const [hasSearched, setHasSearched] = useState(false);
 
+  // Refs for cleanup
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const isMountedRef = useRef(true);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+      // Cancel any pending requests
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
+  }, []);
+
   const handleSearch = useCallback(async () => {
     if (!query.trim()) return;
+
+    // Cancel previous request if any
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+
+    // Create new abort controller
+    const abortController = new AbortController();
+    abortControllerRef.current = abortController;
 
     setIsLoading(true);
     setError(null);
     setHasSearched(true);
 
     try {
-      const res = await fetch(`/api/nutrition/search?q=${encodeURIComponent(query.trim())}`);
+      const res = await fetch(
+        `/api/nutrition/search?q=${encodeURIComponent(query.trim())}`,
+        { signal: abortController.signal }
+      );
+
+      // Check if component is still mounted
+      if (!isMountedRef.current) return;
+
       const data = await res.json();
+
+      // Check again after parsing JSON
+      if (!isMountedRef.current) return;
 
       if (!res.ok) {
         if (data.code === 'RATE_LIMIT') {
@@ -50,11 +85,21 @@ export function NutritionSearch({ onSelect, onClose, className = '' }: INutritio
       }
 
       setResults(data.results || []);
-    } catch {
-      setError('网络错误，请检查连接后重试');
-      setResults([]);
+    } catch (err) {
+      // Ignore abort errors
+      if (err instanceof Error && err.name === 'AbortError') {
+        return;
+      }
+      // Only set error if still mounted
+      if (isMountedRef.current) {
+        setError('网络错误，请检查连接后重试');
+        setResults([]);
+      }
     } finally {
-      setIsLoading(false);
+      // Only update loading state if still mounted
+      if (isMountedRef.current) {
+        setIsLoading(false);
+      }
     }
   }, [query]);
 
@@ -69,8 +114,18 @@ export function NutritionSearch({ onSelect, onClose, className = '' }: INutritio
     onClose();
   };
 
+  // Handle background click to close
+  const handleBackgroundClick = (e: React.MouseEvent) => {
+    if (e.target === e.currentTarget) {
+      onClose();
+    }
+  };
+
   return (
-    <div className={`fixed inset-0 bg-black/50 flex items-end justify-center z-50 ${className}`}>
+    <div
+      className={`fixed inset-0 bg-black/50 flex items-end justify-center z-[9999] ${className}`}
+      onClick={handleBackgroundClick}
+    >
       <div className="bg-white w-full max-w-lg rounded-t-2xl max-h-[85vh] flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-[#E5E8EB]">
