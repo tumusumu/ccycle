@@ -13,16 +13,15 @@ import { ProgressRing } from '@/components/ui/progress-ring';
 import { TCarbDayType } from '@/types/plan';
 import { getCarbDayTypeName } from '@/utils/carbon-cycle';
 import { useIntake } from '@/context/intake-context';
+import { FOOD_NAMES } from '@/constants/nutrition';
 import {
-  calculateNutrition,
-  calculateEggNutrition,
-  FOOD_NAMES,
-} from '@/constants/nutrition';
-
-interface UserData {
-  weight: number;
-  bodyFatPercentage: number;
-}
+  getReferencePortions,
+  calculateTargets,
+  calculateDailyNutrition,
+  intakeToMealsData,
+  IUserData,
+  IReferencePortions,
+} from '@/lib/nutrition-calculator';
 
 interface TodayData {
   date: string;
@@ -33,88 +32,16 @@ interface TodayData {
   };
 }
 
-interface IReferences {
-  oatmeal: number;
-  wholeEggs: number;
-  whiteOnlyEggs: number;
-  lunchRice: number;
-  lunchMeat: number;
-  snackRice: number;
-  snackMeat: number;
-  dinnerRice: number;
-  dinnerMeat: number;
-  strengthMin: number;
-  strengthMax: number;
-  cardioMin: number;
-  cardioMax: number;
-}
-
 const carbDayBadgeVariant: Record<TCarbDayType, 'low' | 'medium' | 'high'> = {
   LOW: 'low',
   MEDIUM: 'medium',
   HIGH: 'high',
 };
 
-// Reference values by carb day type
-// Protein: 4 meals × ~22g each = ~88g/day (for ~87kg body weight)
-// Meat reference ~100g provides ~20-23g protein depending on type
-function getReferences(carbDayType: TCarbDayType): IReferences {
-  if (carbDayType === 'LOW') {
-    return {
-      oatmeal: 40,
-      wholeEggs: 2,
-      whiteOnlyEggs: 1,
-      lunchRice: 80,
-      lunchMeat: 100,
-      snackRice: 40,
-      snackMeat: 100,
-      dinnerRice: 60,
-      dinnerMeat: 100,
-      strengthMin: 40,
-      strengthMax: 50,
-      cardioMin: 20,
-      cardioMax: 30,
-    };
-  } else if (carbDayType === 'MEDIUM') {
-    return {
-      oatmeal: 40,
-      wholeEggs: 2,
-      whiteOnlyEggs: 1,
-      lunchRice: 150,
-      lunchMeat: 100,
-      snackRice: 50,
-      snackMeat: 100,
-      dinnerRice: 100,
-      dinnerMeat: 100,
-      strengthMin: 45,
-      strengthMax: 60,
-      cardioMin: 30,
-      cardioMax: 30,
-    };
-  } else {
-    // HIGH carb day: snack has no rice
-    return {
-      oatmeal: 40,
-      wholeEggs: 2,
-      whiteOnlyEggs: 1,
-      lunchRice: 220,
-      lunchMeat: 100,
-      snackRice: 0,
-      snackMeat: 100,
-      dinnerRice: 180,
-      dinnerMeat: 100,
-      strengthMin: 60,
-      strengthMax: 60,
-      cardioMin: 30,
-      cardioMax: 45,
-    };
-  }
-}
-
 export default function DashboardPage() {
   const router = useRouter();
   const { intake } = useIntake();
-  const [userData, setUserData] = useState<UserData | null>(null);
+  const [userData, setUserData] = useState<IUserData | null>(null);
   const [todayData, setTodayData] = useState<TodayData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -167,43 +94,36 @@ export default function DashboardPage() {
     fetchData();
   }, [fetchData]);
 
-  // Calculate targets and totals
+  // Calculate targets and totals using centralized nutrition calculator
   const { references, targets, totalNutrition } = useMemo(() => {
     if (!userData || !todayData) {
       return { references: null, targets: null, totalNutrition: null };
     }
 
-    const leanMass = userData.weight * (1 - userData.bodyFatPercentage);
     const carbDayType = todayData.carbDayType;
-    const refs = getReferences(carbDayType);
 
-    // Carb targets based on lean mass
-    const carbMultiplier = carbDayType === 'LOW' ? 1 : carbDayType === 'MEDIUM' ? 2 : 3;
-    const carbTarget = Math.round(leanMass * carbMultiplier);
-    const proteinTarget = Math.round(leanMass * 2);
-    const fatTarget = carbDayType === 'LOW' ? Math.round(leanMass * 0.8) : carbDayType === 'MEDIUM' ? Math.round(leanMass * 0.5) : Math.round(leanMass * 0.3);
+    // Get reference portions from centralized module
+    const refs = getReferencePortions(carbDayType);
 
-    // Calculate total nutrition from intake
-    const oatmeal = calculateNutrition('oatmeal', intake.oatmealGrams);
-    const eggs = calculateEggNutrition(intake.wholeEggs, intake.whiteOnlyEggs);
-    const lunchRice = calculateNutrition('rice', intake.lunchRiceGrams);
-    const lunchMeat = intake.lunchMeatType ? calculateNutrition(intake.lunchMeatType, intake.lunchMeatGrams) : { protein: 0, fat: 0, carbs: 0 };
-    const snackRice = calculateNutrition('rice', intake.snackRiceGrams);
-    const snackMeat = intake.snackMeatType ? calculateNutrition(intake.snackMeatType, intake.snackMeatGrams) : { protein: 0, fat: 0, carbs: 0 };
-    const dinnerRice = calculateNutrition('rice', intake.dinnerRiceGrams);
-    const dinnerMeat = intake.dinnerMeatType ? calculateNutrition(intake.dinnerMeatType, intake.dinnerMeatGrams) : { protein: 0, fat: 0, carbs: 0 };
+    // Calculate targets from centralized module
+    const calculatedTargets = calculateTargets(userData, carbDayType);
 
-    const total = {
-      protein: Math.round((oatmeal.protein + eggs.protein + lunchRice.protein + lunchMeat.protein + snackRice.protein + snackMeat.protein + dinnerRice.protein + dinnerMeat.protein) * 10) / 10,
-      fat: Math.round((oatmeal.fat + eggs.fat + lunchRice.fat + lunchMeat.fat + snackRice.fat + snackMeat.fat + dinnerRice.fat + dinnerMeat.fat) * 10) / 10,
-      carbs: Math.round((oatmeal.carbs + eggs.carbs + lunchRice.carbs + lunchMeat.carbs + snackRice.carbs + snackMeat.carbs + dinnerRice.carbs + dinnerMeat.carbs) * 10) / 10,
-      water: todayData.mealPlan.waterLiters * 1000,
-    };
+    // Convert intake to meals data and calculate daily nutrition
+    const mealsData = intakeToMealsData(intake);
+    const dailyNutrition = calculateDailyNutrition(mealsData);
 
     return {
       references: refs,
-      targets: { carbs: carbTarget, protein: proteinTarget, fat: fatTarget, water: todayData.mealPlan.waterLiters * 1000 },
-      totalNutrition: total,
+      targets: {
+        carbs: calculatedTargets.carbs,
+        protein: calculatedTargets.protein,
+        fat: calculatedTargets.fat,
+        water: calculatedTargets.water,
+      },
+      totalNutrition: {
+        ...dailyNutrition,
+        water: todayData.mealPlan.waterLiters * 1000,
+      },
     };
   }, [userData, todayData, intake]);
 

@@ -4,11 +4,11 @@ import { useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
-import { IUserProfileInput, TGender } from '@/types/user';
+import { IUserProfileUpdate, TGender } from '@/types/user';
 
 export interface IProfileFormProps {
-  onSubmit: (data: IUserProfileInput) => void;
-  initialData?: Partial<IUserProfileInput>;
+  onSubmit: (data: IUserProfileUpdate) => void;
+  initialData?: Partial<IUserProfileUpdate>;
   isLoading?: boolean;
   className?: string;
 }
