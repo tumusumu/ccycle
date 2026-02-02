@@ -80,6 +80,17 @@ export async function POST(request: NextRequest) {
     });
 
     const startDate = new Date(body.startDate);
+    startDate.setHours(0, 0, 0, 0);
+
+    // Validate start date is not in the past
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    if (startDate < today) {
+      return NextResponse.json(
+        { error: '开始日期不能早于今天' },
+        { status: 400 }
+      );
+    }
 
     // Validate cycle days (must be multiple of 6, at least 6)
     let cycleDays = body.cycleDays ?? DEFAULT_CYCLE_DAYS;

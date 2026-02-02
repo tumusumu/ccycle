@@ -34,15 +34,30 @@ export default function NewPlanPage() {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
 
+  // Get today's date in local timezone (YYYY-MM-DD format)
+  const getTodayString = () => {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  const todayString = getTodayString();
+
   // Set default dates on client side
   useEffect(() => {
     const today = new Date();
     const defaultEnd = new Date(today);
     defaultEnd.setDate(today.getDate() + 13); // Default to 14 days (2+ full cycles)
 
-    setStartDate(today.toISOString().split('T')[0]);
-    setEndDate(defaultEnd.toISOString().split('T')[0]);
-  }, []);
+    const endYear = defaultEnd.getFullYear();
+    const endMonth = String(defaultEnd.getMonth() + 1).padStart(2, '0');
+    const endDay = String(defaultEnd.getDate()).padStart(2, '0');
+
+    setStartDate(todayString);
+    setEndDate(`${endYear}-${endMonth}-${endDay}`);
+  }, [todayString]);
 
   // Calculate cycle info
   const cycleInfo = useMemo(() => {
@@ -71,7 +86,7 @@ export default function NewPlanPage() {
   }, [startDate, endDate]);
 
   const handleCreatePlan = async () => {
-    if (!startDate || !cycleInfo.isValid) return;
+    if (!startDate || !cycleInfo.isValid || startDate < todayString) return;
 
     setIsLoading(true);
     setError(null);
@@ -184,6 +199,8 @@ export default function NewPlanPage() {
               type="date"
               value={startDate}
               onChange={(v) => setStartDate(String(v))}
+              min={todayString}
+              error={startDate && startDate < todayString ? '开始日期不能早于今天' : undefined}
             />
 
             <Input
@@ -232,7 +249,7 @@ export default function NewPlanPage() {
         <Button
           onClick={handleCreatePlan}
           loading={isLoading}
-          disabled={!cycleInfo.isValid}
+          disabled={!cycleInfo.isValid || !!(startDate && startDate < todayString)}
           className="w-full"
         >
           开启计划
