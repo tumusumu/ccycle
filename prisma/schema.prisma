@@ -12,6 +12,7 @@ model User {
   username          String           @unique
   birthYear         Int
   gender            Gender
+  height            Float?           // cm - for BMI calculation
   weight            Float
   bodyFatPercentage Float
   goalType          String?
@@ -20,18 +21,39 @@ model User {
   bodyMetrics       BodyMetrics[]
   cyclePlans        CyclePlan[]
   exerciseRecords   ExerciseRecord[]
+  metricGoals       MetricGoal[]
 }
 
 model BodyMetrics {
-  id                String   @id @default(cuid())
-  userId            String
-  date              DateTime @db.Date
-  weight            Float
-  bodyFatPercentage Float?
-  createdAt         DateTime @default(now())
-  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id                 String   @id @default(cuid())
+  userId             String
+  date               DateTime @db.Date
+  weight             Float
+  bodyFatPercentage  Float?
+  muscleMass         Float?   // kg of muscle mass
+  waistCircumference Float?   // cm - useful for tracking visceral fat
+  note               String?  // optional note for the day
+  createdAt          DateTime @default(now())
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, date])
+}
+
+model MetricGoal {
+  id          String      @id @default(cuid())
+  userId      String
+  goalType    GoalType
+  targetValue Float
+  startValue  Float
+  startDate   DateTime    @db.Date
+  targetDate  DateTime?   @db.Date // optional deadline
+  achievedAt  DateTime?   // when goal was reached
+  status      GoalStatus  @default(ACTIVE)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status])
 }
 
 model CyclePlan {
@@ -145,4 +167,16 @@ enum ProteinSource {
   CHICKEN
   BEEF
   SHRIMP
+}
+
+enum GoalType {
+  WEIGHT
+  BODY_FAT
+  MUSCLE_MASS
+}
+
+enum GoalStatus {
+  ACTIVE
+  ACHIEVED
+  CANCELLED
 }

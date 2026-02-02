@@ -1,11 +1,22 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import Link from 'next/link';
 import { Header } from '@/components/layout/header';
 import { BottomNav } from '@/components/layout/bottom-nav';
 import { PageContainer } from '@/components/layout/page-container';
 import { Card } from '@/components/ui/card';
-import { IBodyMetrics } from '@/types/user';
+import { Button } from '@/components/ui/button';
+import { IBodyMetrics, IUserProfile } from '@/types/user';
+import {
+  LineChart,
+  IDataPoint,
+  BMIDisplay,
+  GoalCard,
+  IGoalWithProgress,
+  TrendIndicator,
+} from '@/components/metrics';
+import { calculateBMI } from '@/utils/bmi';
 
 interface MetricsData {
   metrics: IBodyMetrics[];
@@ -20,26 +31,91 @@ interface MetricsData {
   } | null;
 }
 
-export default function StatsPage() {
-  const [data, setData] = useState<MetricsData | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+interface TrendsData {
+  trendPoints: Array<{
+    date: string;
+    weight: number;
+    bodyFatPercentage: number | null;
+    muscleMass: number | null;
+    bmi: number | null;
+  }>;
+  trends: {
+    weightPerWeek: number;
+    weightDirection: string;
+    bodyFatPerWeek: number | null;
+    bodyFatDirection: string | null;
+  } | null;
+}
 
-  const fetchMetrics = useCallback(async () => {
+interface GoalsData {
+  goals: IGoalWithProgress[];
+}
+
+export default function StatsPage() {
+  const [metricsData, setMetricsData] = useState<MetricsData | null>(null);
+  const [trendsData, setTrendsData] = useState<TrendsData | null>(null);
+  const [goalsData, setGoalsData] = useState<GoalsData | null>(null);
+  const [user, setUser] = useState<IUserProfile | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [period, setPeriod] = useState<'week' | 'month' | 'all'>('month');
+
+  const fetchData = useCallback(async () => {
     try {
-      const res = await fetch('/api/body-metrics');
-      if (!res.ok) throw new Error('Failed to fetch');
-      const data = await res.json();
-      setData(data);
+      const [metricsRes, trendsRes, goalsRes, userRes] = await Promise.all([
+        fetch('/api/body-metrics'),
+        fetch(`/api/body-metrics/trends?period=${period}`),
+        fetch('/api/goals?status=ACTIVE'),
+        fetch('/api/user'),
+      ]);
+
+      if (metricsRes.ok) {
+        setMetricsData(await metricsRes.json());
+      }
+      if (trendsRes.ok) {
+        setTrendsData(await trendsRes.json());
+      }
+      if (goalsRes.ok) {
+        setGoalsData(await goalsRes.json());
+      }
+      if (userRes.ok) {
+        setUser(await userRes.json());
+      }
     } catch (err) {
-      console.error(err);
+      console.error('Error fetching data:', err);
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [period]);
 
   useEffect(() => {
-    fetchMetrics();
-  }, [fetchMetrics]);
+    fetchData();
+  }, [fetchData]);
+
+  const handleCancelGoal = async (id: string) => {
+    try {
+      await fetch(`/api/goals/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'CANCELLED' }),
+      });
+      fetchData();
+    } catch (err) {
+      console.error('Error cancelling goal:', err);
+    }
+  };
+
+  const handleAchieveGoal = async (id: string) => {
+    try {
+      await fetch(`/api/goals/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'ACHIEVED' }),
+      });
+      fetchData();
+    } catch (err) {
+      console.error('Error achieving goal:', err);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -49,84 +125,207 @@ export default function StatsPage() {
     );
   }
 
-  const summary = data?.summary;
+  const summary = metricsData?.summary;
+  const trends = trendsData?.trends;
+  const weightData: IDataPoint[] = trendsData?.trendPoints?.map((p) => ({
+    date: p.date,
+    value: p.weight,
+  })) || [];
+  const bodyFatData: IDataPoint[] = trendsData?.trendPoints
+    ?.filter((p) => p.bodyFatPercentage !== null)
+    .map((p) => ({
+      date: p.date,
+      value: (p.bodyFatPercentage as number) * 100,
+    })) || [];
+
+  const currentBMI = user?.height && summary?.currentWeight
+    ? calculateBMI(summary.currentWeight, user.height)
+    : null;
 
   return (
     <>
       <Header />
 
-      <PageContainer className="pt-16">
-        <h1 className="text-2xl font-bold text-[#2C3E50] mb-4">身体指标</h1>
+      <PageContainer className="pt-16 pb-24">
+        <div className="flex items-center justify-between mb-4">
+          <h1 className="text-2xl font-bold text-[#2C3E50]">身体指标</h1>
+          <Link href="/stats/record">
+            <Button size="sm">记录</Button>
+          </Link>
+        </div>
+
+        {/* Active Goals */}
+        {goalsData?.goals && goalsData.goals.length > 0 && (
+          <div className="mb-4">
+            <div className="flex items-center justify-between mb-2">
+              <h2 className="text-base font-semibold text-[#2C3E50]">进行中的目标</h2>
+              <Link href="/stats/goals" className="text-sm text-[#4A90D9]">
+                管理目标
+              </Link>
+            </div>
+            <div className="space-y-3">
+              {goalsData.goals.slice(0, 2).map((goal) => (
+                <GoalCard
+                  key={goal.id}
+                  goal={goal}
+                  onCancel={handleCancelGoal}
+                  onAchieve={handleAchieveGoal}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* No goals prompt */}
+        {(!goalsData?.goals || goalsData.goals.length === 0) && summary && (
+          <Card className="mb-4">
+            <div className="text-center py-2">
+              <p className="text-[#5D6D7E] text-sm mb-2">设置目标，追踪进度</p>
+              <Link href="/stats/goals/new">
+                <Button size="sm" variant="secondary">创建目标</Button>
+              </Link>
+            </div>
+          </Card>
+        )}
 
         {summary ? (
           <>
-            {/* Weight Summary */}
+            {/* BMI Card */}
             <Card className="mb-4">
-              <h3 className="text-base font-semibold text-[#2C3E50] mb-4">体重变化</h3>
-              <div className="grid grid-cols-3 gap-4 text-center">
-                <div>
-                  <div className="text-sm text-[#5D6D7E]">起始</div>
-                  <div className="text-xl font-bold text-[#2C3E50]">{summary.startWeight}kg</div>
+              <div className="flex items-start justify-between">
+                <div className="flex-1">
+                  <BMIDisplay bmi={currentBMI} size="md" />
                 </div>
-                <div>
-                  <div className="text-sm text-[#5D6D7E]">当前</div>
-                  <div className="text-xl font-bold text-[#2C3E50]">{summary.currentWeight}kg</div>
-                </div>
-                <div>
-                  <div className="text-sm text-[#5D6D7E]">变化</div>
-                  <div
-                    className={`text-xl font-bold ${
-                      summary.weightChange < 0 ? 'text-[#5CB85C]' : 'text-[#E74C3C]'
-                    }`}
-                  >
-                    {summary.weightChange > 0 ? '+' : ''}
-                    {summary.weightChange.toFixed(1)}kg
-                  </div>
-                </div>
+                {!user?.height && (
+                  <Link href="/settings" className="text-xs text-[#4A90D9]">
+                    设置身高
+                  </Link>
+                )}
               </div>
             </Card>
 
-            {/* Body Fat Summary */}
-            {summary.startBodyFat && summary.currentBodyFat && (
+            {/* Period Selector */}
+            <div className="flex gap-2 mb-4">
+              {(['week', 'month', 'all'] as const).map((p) => (
+                <button
+                  key={p}
+                  onClick={() => setPeriod(p)}
+                  className={`px-3 py-1.5 text-sm rounded-full transition-colors ${
+                    period === p
+                      ? 'bg-[#4A90D9] text-white'
+                      : 'bg-white text-[#5D6D7E]'
+                  }`}
+                >
+                  {p === 'week' ? '近7天' : p === 'month' ? '近30天' : '全部'}
+                </button>
+              ))}
+            </div>
+
+            {/* Weight Chart */}
+            {weightData.length > 1 && (
               <Card className="mb-4">
-                <h3 className="text-base font-semibold text-[#2C3E50] mb-4">体脂率变化</h3>
-                <div className="grid grid-cols-3 gap-4 text-center">
-                  <div>
-                    <div className="text-sm text-[#5D6D7E]">起始</div>
-                    <div className="text-xl font-bold text-[#2C3E50]">
-                      {(summary.startBodyFat * 100).toFixed(1)}%
-                    </div>
-                  </div>
-                  <div>
-                    <div className="text-sm text-[#5D6D7E]">当前</div>
-                    <div className="text-xl font-bold text-[#2C3E50]">
-                      {(summary.currentBodyFat * 100).toFixed(1)}%
-                    </div>
-                  </div>
-                  <div>
-                    <div className="text-sm text-[#5D6D7E]">变化</div>
-                    <div
-                      className={`text-xl font-bold ${
-                        (summary.bodyFatChange ?? 0) < 0
-                          ? 'text-[#5CB85C]'
-                          : 'text-[#E74C3C]'
-                      }`}
-                    >
-                      {(summary.bodyFatChange ?? 0) > 0 ? '+' : ''}
-                      {((summary.bodyFatChange ?? 0) * 100).toFixed(1)}%
-                    </div>
-                  </div>
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-base font-semibold text-[#2C3E50]">体重趋势</h3>
+                  {trends && (
+                    <TrendIndicator
+                      value={trends.weightPerWeek}
+                      unit="kg"
+                      positiveIsGood={false}
+                      size="sm"
+                    />
+                  )}
                 </div>
+                <LineChart
+                  data={weightData}
+                  color="#4A90D9"
+                  height={180}
+                  formatValue={(v) => `${v.toFixed(1)}`}
+                />
               </Card>
             )}
 
+            {/* Body Fat Chart */}
+            {bodyFatData.length > 1 && (
+              <Card className="mb-4">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-base font-semibold text-[#2C3E50]">体脂率趋势</h3>
+                  {trends?.bodyFatPerWeek !== null && (
+                    <TrendIndicator
+                      value={(trends?.bodyFatPerWeek || 0) * 100}
+                      unit="%"
+                      positiveIsGood={false}
+                      size="sm"
+                    />
+                  )}
+                </div>
+                <LineChart
+                  data={bodyFatData}
+                  color="#F5C542"
+                  height={180}
+                  formatValue={(v) => `${v.toFixed(1)}%`}
+                />
+              </Card>
+            )}
+
+            {/* Summary Stats */}
+            <Card className="mb-4">
+              <h3 className="text-base font-semibold text-[#2C3E50] mb-4">变化总结</h3>
+              <div className="grid grid-cols-2 gap-4">
+                {/* Weight Change */}
+                <div className="bg-[#EEF2F7] rounded-[12px] p-3">
+                  <div className="text-xs text-[#5D6D7E] mb-1">体重变化</div>
+                  <div className="flex items-baseline gap-2">
+                    <span
+                      className={`text-xl font-bold ${
+                        summary.weightChange < 0 ? 'text-[#5CB85C]' : 'text-[#E74C3C]'
+                      }`}
+                    >
+                      {summary.weightChange > 0 ? '+' : ''}
+                      {summary.weightChange.toFixed(1)}kg
+                    </span>
+                  </div>
+                  <div className="text-xs text-[#AEB6BF] mt-1">
+                    {summary.startWeight}kg → {summary.currentWeight}kg
+                  </div>
+                </div>
+
+                {/* Body Fat Change */}
+                {summary.startBodyFat && summary.currentBodyFat && (
+                  <div className="bg-[#EEF2F7] rounded-[12px] p-3">
+                    <div className="text-xs text-[#5D6D7E] mb-1">体脂率变化</div>
+                    <div className="flex items-baseline gap-2">
+                      <span
+                        className={`text-xl font-bold ${
+                          (summary.bodyFatChange ?? 0) < 0
+                            ? 'text-[#5CB85C]'
+                            : 'text-[#E74C3C]'
+                        }`}
+                      >
+                        {(summary.bodyFatChange ?? 0) > 0 ? '+' : ''}
+                        {((summary.bodyFatChange ?? 0) * 100).toFixed(1)}%
+                      </span>
+                    </div>
+                    <div className="text-xs text-[#AEB6BF] mt-1">
+                      {(summary.startBodyFat * 100).toFixed(1)}% →{' '}
+                      {(summary.currentBodyFat * 100).toFixed(1)}%
+                    </div>
+                  </div>
+                )}
+              </div>
+            </Card>
+
             {/* Records List */}
             <Card>
-              <h3 className="text-base font-semibold text-[#2C3E50] mb-4">
-                记录历史 ({summary.totalRecords}条)
-              </h3>
-              <div className="space-y-2 max-h-64 overflow-y-auto">
-                {data?.metrics.map((metric) => (
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-base font-semibold text-[#2C3E50]">
+                  记录历史 ({summary.totalRecords}条)
+                </h3>
+                <Link href="/stats/history" className="text-sm text-[#4A90D9]">
+                  查看全部
+                </Link>
+              </div>
+              <div className="space-y-2 max-h-48 overflow-y-auto">
+                {metricsData?.metrics.slice(-10).reverse().map((metric) => (
                   <div
                     key={metric.id}
                     className="flex justify-between py-2 border-b border-[#EEF2F7] last:border-b-0"
@@ -135,7 +334,9 @@ export default function StatsPage() {
                       {new Date(metric.date).toLocaleDateString('zh-CN')}
                     </span>
                     <div className="text-right">
-                      <span className="font-medium text-[#2C3E50]">{metric.weight}kg</span>
+                      <span className="font-medium text-[#2C3E50]">
+                        {metric.weight}kg
+                      </span>
                       {metric.bodyFatPercentage && (
                         <span className="text-[#5D6D7E] ml-2">
                           {(metric.bodyFatPercentage * 100).toFixed(1)}%
@@ -151,7 +352,10 @@ export default function StatsPage() {
           <Card>
             <div className="text-center text-[#5D6D7E] py-8">
               暂无记录数据
-              <p className="text-sm mt-2">完成每日打卡时记录体重</p>
+              <p className="text-sm mt-2">开始记录你的身体指标</p>
+              <Link href="/stats/record" className="block mt-4">
+                <Button>记录第一条</Button>
+              </Link>
             </div>
           </Card>
         )}

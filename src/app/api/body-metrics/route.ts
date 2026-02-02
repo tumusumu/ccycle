@@ -140,12 +140,18 @@ export async function POST(request: NextRequest) {
       update: {
         weight: body.weight,
         bodyFatPercentage: body.bodyFatPercentage,
+        muscleMass: body.muscleMass,
+        waistCircumference: body.waistCircumference,
+        note: body.note,
       },
       create: {
         userId: user.id,
         date: date,
         weight: body.weight,
         bodyFatPercentage: body.bodyFatPercentage,
+        muscleMass: body.muscleMass,
+        waistCircumference: body.waistCircumference,
+        note: body.note,
       },
     });
 
