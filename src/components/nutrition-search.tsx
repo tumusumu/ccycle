@@ -123,6 +123,156 @@ const LOCAL_NUTRITION_DATA: Record<string, { name: string; protein: number; fat:
   'avocado': { name: '牛油果 (本地数据)', protein: 2, fat: 15, carbs: 9, calories: 160 },
 };
 
+// English to Chinese translation map for food names
+const ENGLISH_TO_CHINESE: Record<string, string> = {
+  // Main proteins
+  'chicken': '鸡肉',
+  'beef': '牛肉',
+  'pork': '猪肉',
+  'lamb': '羊肉',
+  'duck': '鸭肉',
+  'turkey': '火鸡',
+  'fish': '鱼',
+  'salmon': '三文鱼',
+  'tuna': '金枪鱼',
+  'shrimp': '虾',
+  'prawn': '大虾',
+  'crab': '蟹',
+  'lobster': '龙虾',
+  'egg': '蛋',
+  'eggs': '蛋',
+  // Cuts and parts
+  'breast': '胸肉',
+  'thigh': '腿肉',
+  'wing': '翅',
+  'drumstick': '鸡腿',
+  'tenderloin': '里脊',
+  'ground': '碎',
+  'minced': '碎',
+  // Cooking methods
+  'roasted': '烤',
+  'roast': '烤',
+  'grilled': '烤',
+  'fried': '炸',
+  'deep fried': '油炸',
+  'stir fried': '炒',
+  'steamed': '蒸',
+  'boiled': '煮',
+  'baked': '烘焙',
+  'raw': '生',
+  'cooked': '熟',
+  'smoked': '烟熏',
+  // Food types
+  'soup': '汤',
+  'salad': '沙拉',
+  'stew': '炖菜',
+  'curry': '咖喱',
+  'sandwich': '三明治',
+  'burger': '汉堡',
+  'roll': '卷',
+  'wrap': '卷饼',
+  'noodle': '面',
+  'noodles': '面条',
+  'rice': '米饭',
+  'bread': '面包',
+  // Vegetables
+  'broccoli': '西兰花',
+  'spinach': '菠菜',
+  'carrot': '胡萝卜',
+  'tomato': '番茄',
+  'potato': '土豆',
+  'onion': '洋葱',
+  'garlic': '蒜',
+  'mushroom': '蘑菇',
+  'pepper': '椒',
+  'cabbage': '卷心菜',
+  'lettuce': '生菜',
+  'celery': '芹菜',
+  'corn': '玉米',
+  'bean': '豆',
+  'beans': '豆',
+  'pea': '豌豆',
+  'peas': '豌豆',
+  // Fruits
+  'orange': '橙',
+  'apple': '苹果',
+  'banana': '香蕉',
+  'lemon': '柠檬',
+  'mango': '芒果',
+  'avocado': '牛油果',
+  // Dairy
+  'milk': '奶',
+  'cheese': '奶酪',
+  'yogurt': '酸奶',
+  'butter': '黄油',
+  'cream': '奶油',
+  // Descriptors
+  'with': '配',
+  'and': '和',
+  'without': '无',
+  'skinless': '去皮',
+  'boneless': '去骨',
+  'lean': '瘦',
+  'fat free': '脱脂',
+  'low fat': '低脂',
+  'whole': '全',
+  'fresh': '新鲜',
+  'frozen': '冷冻',
+  'canned': '罐装',
+  // Cuisines
+  'biryani': '印度饭',
+  'teriyaki': '照烧',
+  'tikka': '烤肉',
+  'masala': '玛萨拉',
+  'kung pao': '宫保',
+  'sweet and sour': '糖醋',
+  'general tso': '左宗棠',
+};
+
+/**
+ * Translate English food name to Chinese
+ * Uses word-by-word translation with smart ordering
+ */
+function translateFoodName(englishName: string): string {
+  if (!englishName) return englishName;
+
+  const lower = englishName.toLowerCase().trim();
+
+  // Check if already contains Chinese characters (local data)
+  if (/[\u4e00-\u9fa5]/.test(englishName)) {
+    return englishName;
+  }
+
+  // Split by common separators and translate each part
+  let result = lower;
+
+  // Sort by length (longer phrases first) to avoid partial replacements
+  const sortedEntries = Object.entries(ENGLISH_TO_CHINESE)
+    .sort((a, b) => b[0].length - a[0].length);
+
+  for (const [en, zh] of sortedEntries) {
+    const regex = new RegExp(`\\b${en}\\b`, 'gi');
+    result = result.replace(regex, zh);
+  }
+
+  // Clean up: remove extra spaces and commas
+  result = result
+    .replace(/,\s*/g, ' ')
+    .replace(/\s+/g, '')
+    .trim();
+
+  // If still mostly English, show both
+  const chineseChars = (result.match(/[\u4e00-\u9fa5]/g) || []).length;
+  const totalChars = result.replace(/\s/g, '').length;
+
+  if (chineseChars < totalChars * 0.3 && chineseChars > 0) {
+    // Less than 30% Chinese, show original with translation hint
+    return `${result} (${englishName})`;
+  }
+
+  return result || englishName;
+}
+
 /**
  * Get local fallback results for a query
  */
@@ -327,24 +477,17 @@ export function NutritionSearch({ onSelect, onClose, className = '' }: INutritio
     onClose();
   };
 
-  // Handle quick search button click
-  const handleQuickSearch = (food: string) => {
-    setQuery(food);
-    // Trigger search after state update
-    setTimeout(() => {
-      const input = document.querySelector('input[type="text"]') as HTMLInputElement;
-      if (input) {
-        input.value = food;
-        const event = new Event('input', { bubbles: true });
-        input.dispatchEvent(event);
-      }
-    }, 0);
-    // Directly perform search
-    setQuery(food);
-  };
-
-  // Effect to trigger search when query changes via quick search
+  // Handle quick search button click with proper abort handling
   const handleQuickSearchClick = async (food: string) => {
+    // Cancel any previous request
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+
+    // Create new abort controller for this request
+    const abortController = new AbortController();
+    abortControllerRef.current = abortController;
+
     setQuery(food);
     setLastSearchedQuery(food);
     setIsLoading(true);
@@ -355,10 +498,17 @@ export function NutritionSearch({ onSelect, onClose, className = '' }: INutritio
     console.log('[NutritionSearch] Quick search:', food, '→', searchQuery);
 
     try {
-      const res = await fetch(`/api/nutrition/search?q=${encodeURIComponent(searchQuery)}`);
+      const res = await fetch(
+        `/api/nutrition/search?q=${encodeURIComponent(searchQuery)}`,
+        { signal: abortController.signal }
+      );
+
+      // Check if still mounted and not aborted
       if (!isMountedRef.current) return;
 
       const data = await res.json();
+
+      if (!isMountedRef.current) return;
 
       if (!res.ok || !data.results || data.results.length === 0) {
         // Try local fallback
@@ -372,13 +522,20 @@ export function NutritionSearch({ onSelect, onClose, className = '' }: INutritio
       } else {
         setResults(data.results);
       }
-    } catch {
-      const localResults = getLocalResults(searchQuery);
-      if (localResults.length > 0) {
-        setResults(localResults);
-        setError(null);
-      } else {
-        setResults([]);
+    } catch (err) {
+      // Ignore abort errors
+      if (err instanceof Error && err.name === 'AbortError') {
+        return;
+      }
+      // Try local fallback on error
+      if (isMountedRef.current) {
+        const localResults = getLocalResults(searchQuery);
+        if (localResults.length > 0) {
+          setResults(localResults);
+          setError(null);
+        } else {
+          setResults([]);
+        }
       }
     } finally {
       if (isMountedRef.current) {
@@ -495,7 +652,7 @@ export function NutritionSearch({ onSelect, onClose, className = '' }: INutritio
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex-1 min-w-0">
                         <h3 className="text-sm font-medium text-[#2C3E50] line-clamp-2">
-                          {result.foodName}
+                          {translateFoodName(result.foodName)}
                         </h3>
                         {result.brandName && (
                           <p className="text-xs text-[#AEB6BF] mt-0.5">{result.brandName}</p>
