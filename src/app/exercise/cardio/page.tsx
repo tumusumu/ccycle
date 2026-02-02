@@ -17,7 +17,8 @@ function getCardioIntensityType(carbDayType: TCarbDayType): string {
 
 export default function CardioPage() {
   const router = useRouter();
-  const { intake, updateMultiple } = useIntake();
+  const { intake, saveToDatabase } = useIntake();
+  const [isSaving, setIsSaving] = useState(false);
   const [carbDayType, setCarbDayType] = useState<TCarbDayType>('LOW');
   const [isLoading, setIsLoading] = useState(true);
 
@@ -54,11 +55,13 @@ export default function CardioPage() {
     }
   }, [isLoading, carbDayType, intake.cardioCompleted, intake.cardioMinutes]);
 
-  const handleSubmit = () => {
-    updateMultiple({
+  const handleSubmit = async () => {
+    setIsSaving(true);
+    await saveToDatabase({
       cardioMinutes: minutes,
       cardioCompleted: true,
     });
+    setIsSaving(false);
     router.push('/dashboard');
   };
 
@@ -144,8 +147,8 @@ export default function CardioPage() {
 
       {/* Bottom Submit Button */}
       <div className="fixed bottom-0 left-0 right-0 p-4 bg-white border-t border-[#E5E8EB]">
-        <Button onClick={handleSubmit} className="w-full py-4 text-base">
-          ✓ 确认完成
+        <Button onClick={handleSubmit} disabled={isSaving} className="w-full py-4 text-base">
+          {isSaving ? '保存中...' : '✓ 确认完成'}
         </Button>
       </div>
     </div>

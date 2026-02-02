@@ -87,6 +87,28 @@ model DailyIntakeRecord {
   waterCompleted      Boolean       @default(false)
   followedPlan        Boolean       @default(true)
   notes               String?
+
+  // Actual intake values (what user actually consumed)
+  // Breakfast
+  actualOatmealGrams    Float?
+  actualWholeEggs       Int?
+  actualWhiteOnlyEggs   Int?
+  // Lunch
+  actualLunchRiceGrams  Float?
+  actualLunchMeatType   String?
+  actualLunchMeatGrams  Float?
+  // Snack
+  actualSnackRiceGrams  Float?
+  actualSnackProteinType String?
+  actualSnackProteinGrams Float?
+  // Dinner
+  actualDinnerRiceGrams Float?
+  actualDinnerMeatType  String?
+  actualDinnerMeatGrams Float?
+  // Exercise
+  actualStrengthMinutes Int?
+  actualCardioMinutes   Int?
+
   createdAt           DateTime      @default(now())
   updatedAt           DateTime      @updatedAt
   dailyMealPlan       DailyMealPlan @relation(fields: [dailyMealPlanId], references: [id], onDelete: Cascade)
