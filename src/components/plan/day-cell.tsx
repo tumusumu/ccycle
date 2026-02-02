@@ -2,7 +2,7 @@
 
 import { TCarbDayType } from '@/types/plan';
 
-export type DayStatus = 'completed' | 'today' | 'future';
+export type DayStatus = 'completed' | 'today' | 'future' | 'no-data';
 
 export interface IDayCellProps {
   date: Date;
@@ -60,7 +60,12 @@ export function DayCell({
   let iconContent: React.ReactNode = null;
   let statusText: React.ReactNode = null;
 
-  if (status === 'completed') {
+  if (status === 'no-data') {
+    // Past day with no data recorded
+    containerClass += ' bg-[#F5F5F5] text-[#9E9E9E]';
+    iconContent = <span className="text-sm">-</span>;
+    statusText = <span className="text-[10px] font-medium">未记录</span>;
+  } else if (status === 'completed') {
     if (isOnTarget) {
       // Completed + On target
       containerClass += ' bg-gradient-to-b from-[#5CB85C] to-[#4A9D4A] text-white';
@@ -97,9 +102,11 @@ export function DayCell({
         className={`text-[9px] px-1.5 py-0.5 rounded-full ${
           status === 'completed'
             ? 'bg-white/20 text-white'
-            : status === 'today'
-              ? `bg-white/60 ${carbStyle.text}`
-              : `bg-white/60 ${carbStyle.text} opacity-70`
+            : status === 'no-data'
+              ? 'bg-[#E5E5E5] text-[#9E9E9E]'
+              : status === 'today'
+                ? `bg-white/60 ${carbStyle.text}`
+                : `bg-white/60 ${carbStyle.text} opacity-70`
         }`}
       >
         {carbStyle.label}

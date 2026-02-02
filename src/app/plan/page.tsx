@@ -178,18 +178,23 @@ export default function PlanPage() {
       // Get carb type based on position in cycle
       const carbDayType = getCarbTypeForDate(planStart, date);
 
+      // Get completion data first
+      const storedIntake = dateStr === todayStr ? intake : getIntakeForDate(dateStr, plan.id);
+      const completionCount = dateStr === todayStr ? todayCompleted : getCompletionCount(storedIntake);
+      const completionPercent = Math.round((completionCount / 6) * 100);
+
       // Determine status
       let status: DayStatus = 'future';
-      if (date < today) {
-        status = 'completed';
-      } else if (dateStr === todayStr) {
+      if (dateStr === todayStr) {
         status = 'today';
+      } else if (date < today) {
+        // Past day - check if there's any data
+        if (completionCount === 0) {
+          status = 'no-data'; // No records for this day
+        } else {
+          status = 'completed';
+        }
       }
-
-      // Get completion data
-      const storedIntake = status === 'today' ? intake : getIntakeForDate(dateStr, plan.id);
-      const completionCount = status === 'today' ? todayCompleted : getCompletionCount(storedIntake);
-      const completionPercent = Math.round((completionCount / 6) * 100);
 
       // Determine if on target (simplified: if completed 6/6)
       const isOnTarget = completionCount === 6;
