@@ -7,17 +7,16 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { getCurrentUser } from '@/lib/auth';
 import { IUserProfileInput, IUserProfileUpdate } from '@/types/user';
 
 export async function GET() {
   try {
-    const user = await prisma.user.findFirst({
-      orderBy: { createdAt: 'desc' },
-    });
+    const user = await getCurrentUser();
 
     if (!user) {
       return NextResponse.json(
-        { error: 'User not found' },
+        { error: 'User not found', code: 'NO_USER' },
         { status: 404 }
       );
     }
@@ -95,7 +94,15 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    return NextResponse.json(user, { status: 201 });
+    // Set user ID cookie for authentication
+    const response = NextResponse.json(user, { status: 201 });
+    response.cookies.set('ccycle_user_id', user.id, {
+      path: '/',
+      maxAge: 365 * 24 * 60 * 60, // 1 year
+      sameSite: 'lax',
+    });
+
+    return response;
   } catch (error) {
     console.error('Error creating user:', error);
     return NextResponse.json(
@@ -110,13 +117,11 @@ export async function PUT(request: NextRequest) {
     const body = (await request.json()) as IUserProfileUpdate;
 
     // Find existing user
-    const existingUser = await prisma.user.findFirst({
-      orderBy: { createdAt: 'desc' },
-    });
+    const existingUser = await getCurrentUser();
 
     if (!existingUser) {
       return NextResponse.json(
-        { error: 'User not found' },
+        { error: 'User not found', code: 'NO_USER' },
         { status: 404 }
       );
     }

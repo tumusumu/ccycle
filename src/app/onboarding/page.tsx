@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { Card } from '@/components/ui/card';
 import { TGender } from '@/types/user';
+import { setCurrentUserId } from '@/hooks/use-current-user';
 
 const USERNAME_REGEX = /^[a-zA-Z0-9]{4,20}$/;
 
@@ -118,10 +119,14 @@ export default function OnboardingPage() {
         }),
       });
 
+      const data = await res.json();
+
       if (!res.ok) {
-        const data = await res.json();
         throw new Error(data.error || '注册失败');
       }
+
+      // Store user ID for authentication
+      setCurrentUserId(data.id);
 
       // Redirect to plan creation page
       router.push('/plan/new');

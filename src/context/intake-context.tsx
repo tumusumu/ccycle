@@ -1,6 +1,7 @@
 'use client';
 
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback, useRef } from 'react';
+import { getCurrentUserIdClient } from '@/hooks/use-current-user';
 
 export interface IMealIntake {
   // Breakfast
@@ -67,9 +68,11 @@ const defaultIntake: IMealIntake = {
 
 const IntakeContext = createContext<IIntakeContext | null>(null);
 
-function getLocalStorageKey(): string {
+function getLocalStorageKey(): string | null {
+  const userId = getCurrentUserIdClient();
+  if (!userId) return null;
   const today = new Date().toISOString().split('T')[0];
-  return `intake-${today}`;
+  return `intake-${userId}-${today}`;
 }
 
 export function IntakeProvider({ children }: { children: ReactNode }) {
@@ -117,39 +120,51 @@ export function IntakeProvider({ children }: { children: ReactNode }) {
             cardioCompleted: data.intake.cardioCompleted ?? false,
           });
           // Update localStorage to match database
-          localStorage.setItem(getLocalStorageKey(), JSON.stringify(data.intake));
+          const storageKey = getLocalStorageKey();
+          if (storageKey) {
+            localStorage.setItem(storageKey, JSON.stringify(data.intake));
+          }
         } else {
           // No database data - try localStorage as fallback
-          const stored = localStorage.getItem(getLocalStorageKey());
-          if (stored) {
-            try {
-              const parsed = JSON.parse(stored);
-              setIntake(parsed);
-            } catch {
-              // ignore parse errors
+          const fallbackKey = getLocalStorageKey();
+          if (fallbackKey) {
+            const stored = localStorage.getItem(fallbackKey);
+            if (stored) {
+              try {
+                const parsed = JSON.parse(stored);
+                setIntake(parsed);
+              } catch {
+                // ignore parse errors
+              }
             }
           }
         }
         hasLoadedFromDb.current = true;
       } else {
         // API error - fall back to localStorage
-        const stored = localStorage.getItem(getLocalStorageKey());
+        const fallbackKey = getLocalStorageKey();
+        if (fallbackKey) {
+          const stored = localStorage.getItem(fallbackKey);
+          if (stored) {
+            try {
+              setIntake(JSON.parse(stored));
+            } catch {
+              // ignore parse errors
+            }
+          }
+        }
+      }
+    } catch {
+      // Network error - fall back to localStorage
+      const fallbackKey = getLocalStorageKey();
+      if (fallbackKey) {
+        const stored = localStorage.getItem(fallbackKey);
         if (stored) {
           try {
             setIntake(JSON.parse(stored));
           } catch {
             // ignore parse errors
           }
-        }
-      }
-    } catch {
-      // Network error - fall back to localStorage
-      const stored = localStorage.getItem(getLocalStorageKey());
-      if (stored) {
-        try {
-          setIntake(JSON.parse(stored));
-        } catch {
-          // ignore parse errors
         }
       }
     } finally {
@@ -166,7 +181,10 @@ export function IntakeProvider({ children }: { children: ReactNode }) {
   // Save to localStorage on change (as cache)
   useEffect(() => {
     if (isHydrated) {
-      localStorage.setItem(getLocalStorageKey(), JSON.stringify(intake));
+      const storageKey = getLocalStorageKey();
+      if (storageKey) {
+        localStorage.setItem(storageKey, JSON.stringify(intake));
+      }
     }
   }, [intake, isHydrated]);
 

@@ -6,6 +6,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { getCurrentUser } from '@/lib/auth';
 import { generateExercisePlan, getExerciseCompletionStatus } from '@/utils/exercise';
 import { getToday } from '@/utils/date';
 import { TCarbDayType } from '@/types/plan';
@@ -13,13 +14,11 @@ import { IExerciseRecordInput } from '@/types/exercise';
 
 export async function GET() {
   try {
-    const user = await prisma.user.findFirst({
-      orderBy: { createdAt: 'desc' },
-    });
+    const user = await getCurrentUser();
 
     if (!user) {
       return NextResponse.json(
-        { error: 'User not found' },
+        { error: 'User not found', code: 'NO_USER' },
         { status: 404 }
       );
     }
@@ -89,13 +88,11 @@ export async function PUT(request: NextRequest) {
   try {
     const body = (await request.json()) as IExerciseRecordInput;
 
-    const user = await prisma.user.findFirst({
-      orderBy: { createdAt: 'desc' },
-    });
+    const user = await getCurrentUser();
 
     if (!user) {
       return NextResponse.json(
-        { error: 'User not found' },
+        { error: 'User not found', code: 'NO_USER' },
         { status: 404 }
       );
     }

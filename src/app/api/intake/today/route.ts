@@ -6,6 +6,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { getCurrentUser } from '@/lib/auth';
 import { getToday } from '@/utils/date';
 
 interface IActualIntakeInput {
@@ -38,9 +39,7 @@ interface IActualIntakeInput {
 
 export async function GET() {
   try {
-    const user = await prisma.user.findFirst({
-      orderBy: { createdAt: 'desc' },
-    });
+    const user = await getCurrentUser();
 
     if (!user) {
       return NextResponse.json(
@@ -143,13 +142,11 @@ export async function PUT(request: NextRequest) {
   try {
     const body = (await request.json()) as IActualIntakeInput;
 
-    const user = await prisma.user.findFirst({
-      orderBy: { createdAt: 'desc' },
-    });
+    const user = await getCurrentUser();
 
     if (!user) {
       return NextResponse.json(
-        { error: 'User not found' },
+        { error: 'User not found', code: 'NO_USER' },
         { status: 404 }
       );
     }

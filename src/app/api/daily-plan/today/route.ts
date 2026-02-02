@@ -5,15 +5,14 @@
 
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { getCurrentUser } from '@/lib/auth';
 import { generateExercisePlan } from '@/utils/exercise';
 import { formatDate, getToday } from '@/utils/date';
 import { TCarbDayType } from '@/types/plan';
 
 export async function GET() {
   try {
-    const user = await prisma.user.findFirst({
-      orderBy: { createdAt: 'desc' },
-    });
+    const user = await getCurrentUser();
 
     if (!user) {
       return NextResponse.json(

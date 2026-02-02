@@ -6,18 +6,17 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { getCurrentUser } from '@/lib/auth';
 import { IBodyMetricsInput } from '@/types/user';
 import { getToday, parseDate } from '@/utils/date';
 
 export async function GET(request: NextRequest) {
   try {
-    const user = await prisma.user.findFirst({
-      orderBy: { createdAt: 'desc' },
-    });
+    const user = await getCurrentUser();
 
     if (!user) {
       return NextResponse.json(
-        { error: 'User not found' },
+        { error: 'User not found', code: 'NO_USER' },
         { status: 404 }
       );
     }
@@ -116,13 +115,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const user = await prisma.user.findFirst({
-      orderBy: { createdAt: 'desc' },
-    });
+    const user = await getCurrentUser();
 
     if (!user) {
       return NextResponse.json(
-        { error: 'User not found' },
+        { error: 'User not found', code: 'NO_USER' },
         { status: 404 }
       );
     }

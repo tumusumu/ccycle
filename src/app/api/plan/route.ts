@@ -6,6 +6,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { getCurrentUser } from '@/lib/auth';
 import { ICyclePlanInput } from '@/types/plan';
 import { TGender } from '@/types/user';
 import { getCarbDayType } from '@/utils/carbon-cycle';
@@ -17,13 +18,11 @@ const CYCLE_LENGTH = 6; // 112113 pattern length
 
 export async function GET() {
   try {
-    const user = await prisma.user.findFirst({
-      orderBy: { createdAt: 'desc' },
-    });
+    const user = await getCurrentUser();
 
     if (!user) {
       return NextResponse.json(
-        { error: 'User not found. Please complete onboarding first.' },
+        { error: 'User not found. Please complete onboarding first.', code: 'NO_USER' },
         { status: 404 }
       );
     }
@@ -59,13 +58,11 @@ export async function POST(request: NextRequest) {
     }
 
     // Get user
-    const user = await prisma.user.findFirst({
-      orderBy: { createdAt: 'desc' },
-    });
+    const user = await getCurrentUser();
 
     if (!user) {
       return NextResponse.json(
-        { error: 'User not found. Please complete onboarding first.' },
+        { error: 'User not found. Please complete onboarding first.', code: 'NO_USER' },
         { status: 404 }
       );
     }

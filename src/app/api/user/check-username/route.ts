@@ -39,6 +39,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({
         valid: false,
         error: '该用户名已被使用',
+        userId: existingUser.id, // Return user ID for login functionality
       });
     }
 

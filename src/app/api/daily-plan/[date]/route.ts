@@ -5,6 +5,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { getCurrentUser } from '@/lib/auth';
 import { generateExercisePlan } from '@/utils/exercise';
 import { parseDate } from '@/utils/date';
 import { TCarbDayType } from '@/types/plan';
@@ -19,13 +20,11 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
     const { date: dateStr } = await params;
 
-    const user = await prisma.user.findFirst({
-      orderBy: { createdAt: 'desc' },
-    });
+    const user = await getCurrentUser();
 
     if (!user) {
       return NextResponse.json(
-        { error: 'User not found' },
+        { error: 'User not found', code: 'NO_USER' },
         { status: 404 }
       );
     }
