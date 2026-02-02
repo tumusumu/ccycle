@@ -5,58 +5,147 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 
 // Chinese to English food name mapping for API search
+// Includes both full names and short forms for better matching
 const FOOD_NAME_MAP: Record<string, string> = {
-  // Meat
+  // Meat - full and short forms
   '牛肉': 'beef',
+  '牛': 'beef',
   '鸡肉': 'chicken',
+  '鸡': 'chicken',
   '鸡胸肉': 'chicken breast',
+  '鸡胸': 'chicken breast',
   '鸡腿': 'chicken thigh',
+  '鸡翅': 'chicken wing',
   '猪肉': 'pork',
+  '猪': 'pork',
   '猪里脊': 'pork tenderloin',
   '羊肉': 'lamb',
+  '羊': 'lamb',
+  '鸭肉': 'duck',
+  '鸭': 'duck',
   // Seafood
   '三文鱼': 'salmon',
+  '鱼肉': 'fish',
   '鱼': 'fish',
   '虾': 'shrimp',
   '虾仁': 'shrimp',
+  '大虾': 'prawn',
   '金枪鱼': 'tuna',
+  '吞拿鱼': 'tuna',
   '鳕鱼': 'cod',
-  '带鱼': 'hairtail fish',
+  '带鱼': 'hairtail',
   '鲈鱼': 'sea bass',
+  '龙虾': 'lobster',
+  '蟹': 'crab',
+  '螃蟹': 'crab',
   // Grains
   '燕麦': 'oatmeal',
-  '米饭': 'rice cooked',
+  '麦片': 'oatmeal',
+  '米饭': 'rice',
+  '米': 'rice',
+  '白米': 'white rice',
   '糙米': 'brown rice',
   '面条': 'noodles',
+  '面': 'noodles',
   '面包': 'bread',
   '馒头': 'steamed bun',
+  '红薯': 'sweet potato',
+  '地瓜': 'sweet potato',
+  '紫薯': 'purple sweet potato',
+  '土豆': 'potato',
+  '玉米': 'corn',
   // Eggs & Dairy
   '鸡蛋': 'egg',
+  '蛋': 'egg',
   '蛋白': 'egg white',
+  '蛋黄': 'egg yolk',
   '牛奶': 'milk',
+  '奶': 'milk',
   '酸奶': 'yogurt',
   '奶酪': 'cheese',
+  '芝士': 'cheese',
   // Vegetables
   '西兰花': 'broccoli',
+  '花椰菜': 'broccoli',
   '菠菜': 'spinach',
   '生菜': 'lettuce',
   '番茄': 'tomato',
   '西红柿': 'tomato',
   '黄瓜': 'cucumber',
   '胡萝卜': 'carrot',
-  '土豆': 'potato',
-  '红薯': 'sweet potato',
-  '紫薯': 'purple sweet potato',
+  '白菜': 'cabbage',
+  '卷心菜': 'cabbage',
+  '芹菜': 'celery',
+  '青椒': 'green pepper',
+  '洋葱': 'onion',
+  '蘑菇': 'mushroom',
   // Legumes & Nuts
   '豆腐': 'tofu',
   '豆浆': 'soy milk',
+  '黄豆': 'soybean',
   '花生': 'peanut',
   '杏仁': 'almond',
   '核桃': 'walnut',
+  '腰果': 'cashew',
+  // Fruits
+  '苹果': 'apple',
+  '香蕉': 'banana',
+  '橙子': 'orange',
+  '葡萄': 'grape',
+  '蓝莓': 'blueberry',
+  '草莓': 'strawberry',
+  '牛油果': 'avocado',
   // Protein supplements
   '蛋白粉': 'whey protein',
   '乳清蛋白': 'whey protein',
+  '增肌粉': 'mass gainer',
 };
+
+// Local nutrition data fallback (per 100g)
+// Used when API fails or for quick results
+const LOCAL_NUTRITION_DATA: Record<string, { name: string; protein: number; fat: number; carbs: number; calories: number }> = {
+  'beef': { name: '牛肉 (本地数据)', protein: 21, fat: 2.5, carbs: 0, calories: 106 },
+  'chicken': { name: '鸡肉 (本地数据)', protein: 23, fat: 1.2, carbs: 0, calories: 105 },
+  'chicken breast': { name: '鸡胸肉 (本地数据)', protein: 24, fat: 1.5, carbs: 0, calories: 110 },
+  'pork': { name: '猪肉 (本地数据)', protein: 20, fat: 7, carbs: 0, calories: 143 },
+  'fish': { name: '鱼肉 (本地数据)', protein: 18, fat: 3, carbs: 0, calories: 99 },
+  'salmon': { name: '三文鱼 (本地数据)', protein: 20, fat: 13, carbs: 0, calories: 200 },
+  'shrimp': { name: '虾肉 (本地数据)', protein: 18.6, fat: 0.8, carbs: 0, calories: 82 },
+  'egg': { name: '鸡蛋 (本地数据)', protein: 13, fat: 11, carbs: 1, calories: 155 },
+  'rice': { name: '米饭-熟 (本地数据)', protein: 2.6, fat: 0.3, carbs: 28, calories: 130 },
+  'oatmeal': { name: '燕麦 (本地数据)', protein: 15, fat: 6.9, carbs: 66, calories: 389 },
+  'whey protein': { name: '蛋白粉 (本地数据)', protein: 78, fat: 4, carbs: 7, calories: 380 },
+  'tofu': { name: '豆腐 (本地数据)', protein: 8, fat: 4, carbs: 2, calories: 76 },
+  'milk': { name: '牛奶 (本地数据)', protein: 3.4, fat: 3.6, carbs: 4.8, calories: 64 },
+  'broccoli': { name: '西兰花 (本地数据)', protein: 2.8, fat: 0.4, carbs: 7, calories: 34 },
+  'sweet potato': { name: '红薯 (本地数据)', protein: 1.6, fat: 0.1, carbs: 20, calories: 86 },
+  'banana': { name: '香蕉 (本地数据)', protein: 1.1, fat: 0.3, carbs: 23, calories: 89 },
+  'avocado': { name: '牛油果 (本地数据)', protein: 2, fat: 15, carbs: 9, calories: 160 },
+};
+
+/**
+ * Get local fallback results for a query
+ */
+function getLocalResults(englishQuery: string): INutritionResult[] {
+  const query = englishQuery.toLowerCase();
+  const results: INutritionResult[] = [];
+
+  for (const [key, data] of Object.entries(LOCAL_NUTRITION_DATA)) {
+    if (key.includes(query) || query.includes(key)) {
+      results.push({
+        fdcId: -1 * (results.length + 1), // Negative ID for local data
+        foodName: data.name,
+        protein: data.protein,
+        fat: data.fat,
+        carbs: data.carbs,
+        calories: data.calories,
+        dataType: 'Local',
+      });
+    }
+  }
+
+  return results;
+}
 
 /**
  * Translate Chinese food name to English for API search
@@ -165,16 +254,35 @@ export function NutritionSearch({ onSelect, onClose, className = '' }: INutritio
 
       if (!res.ok) {
         console.error('[NutritionSearch] API error:', data);
-        if (data.code === 'RATE_LIMIT') {
+        // Try local fallback
+        const localResults = getLocalResults(searchQuery);
+        console.log('[NutritionSearch] Using local fallback, found:', localResults.length);
+
+        if (localResults.length > 0) {
+          setResults(localResults);
+          setError(null);
+        } else if (data.code === 'RATE_LIMIT') {
           setError('API请求过于频繁，请稍后再试');
+          setResults([]);
         } else {
           setError('搜索失败，请重试');
+          setResults([]);
         }
-        setResults([]);
         return;
       }
 
       console.log('[NutritionSearch] Results count:', data.results?.length || 0);
+
+      // If API returns no results, try local fallback
+      if (!data.results || data.results.length === 0) {
+        const localResults = getLocalResults(searchQuery);
+        console.log('[NutritionSearch] API empty, trying local fallback:', localResults.length);
+        if (localResults.length > 0) {
+          setResults(localResults);
+          return;
+        }
+      }
+
       setResults(data.results || []);
     } catch (err) {
       // Ignore abort errors
@@ -183,8 +291,17 @@ export function NutritionSearch({ onSelect, onClose, className = '' }: INutritio
       }
       // Only set error if still mounted
       if (isMountedRef.current) {
-        setError('网络错误，请检查连接后重试');
-        setResults([]);
+        // Try local fallback on network error
+        const localResults = getLocalResults(searchQuery);
+        console.log('[NutritionSearch] Network error, trying local fallback:', localResults.length);
+
+        if (localResults.length > 0) {
+          setResults(localResults);
+          setError(null);
+        } else {
+          setError('网络错误，请检查连接后重试');
+          setResults([]);
+        }
       }
     } finally {
       // Only update loading state if still mounted
