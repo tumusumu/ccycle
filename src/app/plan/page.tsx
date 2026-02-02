@@ -2,18 +2,35 @@
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 import { Header } from '@/components/layout/header';
 import { BottomNav } from '@/components/layout/bottom-nav';
 import { PageContainer } from '@/components/layout/page-container';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { ProgressBar } from '@/components/ui/progress-bar';
-import { getPatternName, getCarbDayTypeName } from '@/utils/carbon-cycle';
-import { formatDateCN } from '@/utils/date';
+import { DayCell, DayDetailModal, IDayDetailData, DayStatus, CycleStats } from '@/components/plan';
+import {
+  getCarbDayTypeName,
+  getCycleNumber,
+  getDayInCycle,
+  getCarbTypeForDate,
+  getCycleStartDate,
+  CYCLE_LENGTH,
+} from '@/utils/carbon-cycle';
+import { formatDate } from '@/utils/date';
 import { TCarbDayType } from '@/types/plan';
 import { useIntake, IMealIntake } from '@/context/intake-context';
+import {
+  calculateTargets,
+  calculateDailyNutrition,
+  intakeToMealsData,
+  IUserData,
+} from '@/lib/nutrition-calculator';
+
+interface DailyPlan {
+  date: string;
+  dayNumber: number;
+  carbDayType: TCarbDayType;
+}
 
 interface PlanData {
   id: string;
@@ -23,59 +40,36 @@ interface PlanData {
   currentDay: number;
   totalDaysElapsed: number;
   totalDays: number;
-  completionPercentage: number;
-  dailyMealPlans: Array<{
-    date: string;
-    dayNumber: number;
-    carbDayType: TCarbDayType;
-  }>;
+  dailyMealPlans: DailyPlan[];
 }
 
-const carbDayBadgeVariant: Record<TCarbDayType, 'low' | 'medium' | 'high'> = {
-  LOW: 'low',
-  MEDIUM: 'medium',
-  HIGH: 'high',
-};
+interface UserData {
+  weight: number;
+  bodyFatPercentage: number;
+}
 
-// Get completion count for a specific date from localStorage
-function getCompletionForDate(dateStr: string): number {
-  if (typeof window === 'undefined') return 0;
-
+// Get intake data from localStorage for a specific date
+function getIntakeForDate(dateStr: string, visitorId: string): IMealIntake | null {
+  if (typeof window === 'undefined') return null;
   try {
-    const stored = localStorage.getItem(`intake-${dateStr}`);
-    if (!stored) return 0;
-
-    const data = JSON.parse(stored) as IMealIntake;
-    return [
-      data.breakfastCompleted,
-      data.lunchCompleted,
-      data.snackCompleted,
-      data.dinnerCompleted,
-      data.strengthCompleted,
-      data.cardioCompleted,
-    ].filter(Boolean).length;
+    const key = `intake-${visitorId}-${dateStr}`;
+    const stored = localStorage.getItem(key);
+    if (!stored) {
+      // Try legacy key without userId
+      const legacyStored = localStorage.getItem(`intake-${dateStr}`);
+      if (legacyStored) return JSON.parse(legacyStored);
+      return null;
+    }
+    return JSON.parse(stored);
   } catch {
-    return 0;
+    return null;
   }
 }
 
-// Check if a date is fully completed (6/6)
-function isDayFullyCompleted(dateStr: string): boolean {
-  return getCompletionForDate(dateStr) === 6;
-}
-
-export default function PlanPage() {
-  const router = useRouter();
-  const { intake } = useIntake();
-  const [plan, setPlan] = useState<PlanData | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [completedDays, setCompletedDays] = useState(0);
-
-  // Today's date string
-  const todayStr = new Date().toISOString().split('T')[0];
-
-  // Calculate today's completion
-  const todayCompleted = [
+// Calculate completion count from intake data
+function getCompletionCount(intake: IMealIntake | null): number {
+  if (!intake) return 0;
+  return [
     intake.breakfastCompleted,
     intake.lunchCompleted,
     intake.snackCompleted,
@@ -83,80 +77,219 @@ export default function PlanPage() {
     intake.strengthCompleted,
     intake.cardioCompleted,
   ].filter(Boolean).length;
+}
 
-  const todayTotal = 6;
-  const todayPercentage = Math.round((todayCompleted / todayTotal) * 100);
+export default function PlanPage() {
+  const router = useRouter();
+  const { intake } = useIntake();
+  const [plan, setPlan] = useState<PlanData | null>(null);
+  const [userData, setUserData] = useState<UserData | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [selectedDay, setSelectedDay] = useState<IDayDetailData | null>(null);
+  const [currentCycleNumber, setCurrentCycleNumber] = useState<number>(1);
 
-  const fetchPlan = useCallback(async () => {
+  // Today's date
+  const today = useMemo(() => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    return d;
+  }, []);
+  const todayStr = formatDate(today);
+
+  // Today's completion
+  const todayCompleted = useMemo(() => {
+    return [
+      intake.breakfastCompleted,
+      intake.lunchCompleted,
+      intake.snackCompleted,
+      intake.dinnerCompleted,
+      intake.strengthCompleted,
+      intake.cardioCompleted,
+    ].filter(Boolean).length;
+  }, [intake]);
+
+  const fetchData = useCallback(async () => {
     try {
-      const res = await fetch('/api/plan/current');
-      if (res.status === 404) {
+      const [planRes, userRes] = await Promise.all([
+        fetch('/api/plan/current'),
+        fetch('/api/user'),
+      ]);
+
+      if (planRes.status === 404) {
         router.push('/onboarding');
         return;
       }
-      if (!res.ok) throw new Error('Failed to fetch');
-      const data = await res.json();
-      setPlan(data);
+      if (!planRes.ok) throw new Error('Failed to fetch plan');
+
+      const planData = await planRes.json();
+      setPlan(planData);
+
+      // Set initial cycle to current cycle
+      const startDate = new Date(planData.startDate);
+      const currentCycle = getCycleNumber(startDate, today);
+      setCurrentCycleNumber(currentCycle);
+
+      if (userRes.ok) {
+        const user = await userRes.json();
+        setUserData({
+          weight: user.weight,
+          bodyFatPercentage: user.bodyFatPercentage,
+        });
+      }
     } catch (err) {
       console.error(err);
     } finally {
       setIsLoading(false);
     }
-  }, [router]);
+  }, [router, today]);
 
   useEffect(() => {
-    fetchPlan();
-  }, [fetchPlan]);
+    fetchData();
+  }, [fetchData]);
 
-  // Calculate completed days from localStorage
-  useEffect(() => {
-    if (!plan) return;
+  // Calculate 6-day cycle data
+  const cycleData = useMemo(() => {
+    if (!plan) return [];
 
-    const startDate = new Date(plan.startDate);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const planStart = new Date(plan.startDate);
+    const cycleStart = getCycleStartDate(planStart, currentCycleNumber);
 
-    let count = 0;
-    const currentDate = new Date(startDate);
+    const result: Array<{
+      date: Date;
+      dateStr: string;
+      dayNumber: number;
+      dayInCycle: number;
+      carbDayType: TCarbDayType;
+      status: DayStatus;
+      completionPercent: number;
+      isOnTarget: boolean;
+    }> = [];
 
-    while (currentDate < today) {
-      const dateStr = currentDate.toISOString().split('T')[0];
-      if (isDayFullyCompleted(dateStr)) {
-        count++;
+    for (let i = 0; i < CYCLE_LENGTH; i++) {
+      const date = new Date(cycleStart);
+      date.setDate(cycleStart.getDate() + i);
+      const dateStr = formatDate(date);
+
+      // Calculate day number from plan start
+      const daysSinceStart = Math.floor((date.getTime() - planStart.getTime()) / (1000 * 60 * 60 * 24));
+      const dayNumber = daysSinceStart + 1;
+      const dayInCycle = i + 1;
+
+      // Get carb type based on position in cycle
+      const carbDayType = getCarbTypeForDate(planStart, date);
+
+      // Determine status
+      let status: DayStatus = 'future';
+      if (date < today) {
+        status = 'completed';
+      } else if (dateStr === todayStr) {
+        status = 'today';
       }
-      currentDate.setDate(currentDate.getDate() + 1);
+
+      // Get completion data
+      const storedIntake = status === 'today' ? intake : getIntakeForDate(dateStr, plan.id);
+      const completionCount = status === 'today' ? todayCompleted : getCompletionCount(storedIntake);
+      const completionPercent = Math.round((completionCount / 6) * 100);
+
+      // Determine if on target (simplified: if completed 6/6)
+      const isOnTarget = completionCount === 6;
+
+      result.push({
+        date,
+        dateStr,
+        dayNumber,
+        dayInCycle,
+        carbDayType,
+        status,
+        completionPercent,
+        isOnTarget,
+      });
     }
 
-    // Add today if fully completed
-    if (todayCompleted === 6) {
-      count++;
+    return result;
+  }, [plan, currentCycleNumber, today, todayStr, intake, todayCompleted]);
+
+  // Calculate current info
+  const currentInfo = useMemo(() => {
+    if (!plan) return null;
+
+    const planStart = new Date(plan.startDate);
+    const totalDays = Math.floor((today.getTime() - planStart.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+    const currentCycle = getCycleNumber(planStart, today);
+    const dayInCycle = getDayInCycle(planStart, today);
+
+    return {
+      totalDays: Math.max(1, totalDays),
+      currentCycle,
+      dayInCycle,
+    };
+  }, [plan, today]);
+
+  // Navigate cycles
+  const goToPrevCycle = () => {
+    if (currentCycleNumber > 1) {
+      setCurrentCycleNumber(currentCycleNumber - 1);
+    }
+  };
+
+  const goToNextCycle = () => {
+    if (!plan || !currentInfo) return;
+    // Allow viewing up to 2 cycles ahead
+    const maxCycle = currentInfo.currentCycle + 2;
+    if (currentCycleNumber < maxCycle) {
+      setCurrentCycleNumber(currentCycleNumber + 1);
+    }
+  };
+
+  // Handle day click
+  const handleDayClick = (dayData: typeof cycleData[0]) => {
+    if (dayData.status === 'future') return;
+    if (!userData) return;
+
+    // Calculate targets for this day
+    const targets = calculateTargets(
+      { weight: userData.weight, bodyFatPercentage: userData.bodyFatPercentage } as IUserData,
+      dayData.carbDayType
+    );
+
+    // Get intake data
+    const storedIntake = dayData.status === 'today' ? intake : getIntakeForDate(dayData.dateStr, plan?.id || '');
+
+    // Calculate actual nutrition
+    let nutrition = { carbs: 0, protein: 0, fat: 0, calories: 0 };
+    if (storedIntake) {
+      const mealsData = intakeToMealsData(storedIntake);
+      nutrition = calculateDailyNutrition(mealsData);
     }
 
-    setCompletedDays(count);
-  }, [plan, todayCompleted]);
+    setSelectedDay({
+      date: dayData.date,
+      carbDayType: dayData.carbDayType,
+      nutrition: {
+        carbs: { actual: Math.round(nutrition.carbs), target: targets.carbs },
+        protein: { actual: Math.round(nutrition.protein), target: targets.protein },
+        fat: { actual: Math.round(nutrition.fat), target: targets.fat },
+        calories: { actual: Math.round(nutrition.calories), target: targets.calories },
+      },
+      exercise: storedIntake ? {
+        strengthMinutes: storedIntake.strengthMinutes,
+        cardioMinutes: storedIntake.cardioMinutes,
+      } : undefined,
+    });
+  };
 
   const handleRestart = async () => {
-    if (!confirm('确定要重新开始计划吗?当前计划将被取消。')) {
-      return;
-    }
+    if (!confirm('确定要重新开始计划吗？当前计划将被取消。')) return;
 
     try {
       if (plan) {
-        await fetch(`/api/plan/${plan.id}`, {
-          method: 'DELETE',
-        });
+        await fetch(`/api/plan/${plan.id}`, { method: 'DELETE' });
       }
       router.push('/onboarding');
     } catch (err) {
       console.error('Failed to restart:', err);
     }
   };
-
-  // Calculate overall completion percentage
-  const overallPercentage = useMemo(() => {
-    if (!plan) return 0;
-    return Math.round((completedDays / plan.totalDays) * 100);
-  }, [plan, completedDays]);
 
   if (isLoading) {
     return (
@@ -166,170 +299,149 @@ export default function PlanPage() {
     );
   }
 
-  if (!plan) {
-    return null;
-  }
+  if (!plan) return null;
 
-  const startDate = new Date(plan.startDate);
-  const upcomingDays = plan.dailyMealPlans.slice(
-    Math.max(0, plan.totalDaysElapsed - 1),
-    plan.totalDaysElapsed + 5
-  );
+  // Calculate stats for current cycle view
+  const completedDays = cycleData.filter((d) => d.status === 'completed').length;
+  const onTargetDays = cycleData.filter((d) => d.status === 'completed' && d.isOnTarget).length;
+
+  // Find today in cycle data
+  const todayInCycle = cycleData.find((d) => d.dateStr === todayStr);
 
   return (
     <>
-      <Header />
+      <Header showBack title="我的计划" />
 
-      <PageContainer className="pt-16">
-        <h1 className="text-2xl font-bold text-[#2C3E50] mb-4">我的计划</h1>
-
-        {/* Plan Status */}
-        <Card className="mb-4">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="font-semibold text-[#2C3E50]">当前计划</h3>
-            <Badge variant="info">{plan.status === 'ACTIVE' ? '进行中' : plan.status}</Badge>
-          </div>
-
-          <div className="space-y-3 text-sm">
-            <div className="flex justify-between py-2 border-b border-[#EEF2F7]">
-              <span className="text-[#5D6D7E]">循环模式</span>
-              <span className="font-medium text-[#2C3E50]">
-                {getPatternName()}
-              </span>
-            </div>
-            <div className="flex justify-between py-2 border-b border-[#EEF2F7]">
-              <span className="text-[#5D6D7E]">开始日期</span>
-              <span className="font-medium text-[#2C3E50]">{formatDateCN(startDate, 'long')}</span>
-            </div>
-            <div className="flex justify-between py-2 border-b border-[#EEF2F7]">
-              <span className="text-[#5D6D7E]">当前进度</span>
-              <span className="font-medium text-[#2C3E50]">
-                第 {plan.totalDaysElapsed} / {plan.totalDays} 天
-              </span>
-            </div>
-            <div className="flex justify-between py-2">
-              <span className="text-[#5D6D7E]">今日完成</span>
-              <span className="font-medium text-[#2C3E50]">
-                {todayCompleted}/{todayTotal} ({todayPercentage}%)
-              </span>
-            </div>
-          </div>
-
-          {/* Today's completion progress bar */}
-          <div className="mt-4">
-            <div className="flex justify-between text-xs text-[#5D6D7E] mb-1">
-              <span>今日进度</span>
-              <span>{todayCompleted}/{todayTotal}</span>
-            </div>
-            <div className="w-full h-2 bg-[#E8F5E9] rounded-full overflow-hidden">
-              <div
-                className="h-full bg-[#4CAF50] rounded-full transition-all duration-500"
-                style={{ width: `${todayPercentage}%` }}
-              />
-            </div>
-          </div>
-
-          {/* Overall completion progress bar */}
-          <div className="mt-4">
-            <div className="flex justify-between text-xs text-[#5D6D7E] mb-1">
-              <span>总体完成度</span>
-              <span>{completedDays}/{plan.totalDays} 天 ({overallPercentage}%)</span>
-            </div>
-            <div className="w-full h-2 bg-[#E8F5E9] rounded-full overflow-hidden">
-              <div
-                className="h-full bg-[#2E7D32] rounded-full transition-all duration-500"
-                style={{ width: `${overallPercentage}%` }}
-              />
-            </div>
-          </div>
-        </Card>
-
-        {/* Upcoming Days */}
-        <Card className="mb-4">
-          <h3 className="font-semibold text-[#2C3E50] mb-4">近期安排</h3>
-          <div className="space-y-2">
-            {upcomingDays.map((day) => {
-              const isToday = day.dayNumber === plan.totalDaysElapsed;
-              const isPast = day.dayNumber < plan.totalDaysElapsed;
-              const date = new Date(day.date);
-              const dateStr = day.date;
-
-              // Get completion for this day
-              const dayCompletion = isToday
-                ? todayCompleted
-                : isPast
-                  ? getCompletionForDate(dateStr)
-                  : 0;
-
-              return (
-                <div
-                  key={day.dayNumber}
-                  className={`
-                    flex items-center justify-between py-2 px-3 rounded-lg
-                    ${isToday ? 'bg-blue-50 ring-1 ring-[#4A90D9]' : ''}
-                    ${isPast ? 'opacity-75' : ''}
-                  `}
-                >
-                  <div className="flex items-center gap-3">
-                    <span className="text-sm text-[#5D6D7E]">
-                      {formatDateCN(date)}
-                    </span>
-                    {isToday && (
-                      <span className="text-xs text-[#4A90D9] font-medium">
-                        今天
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {/* Only show completion badge for today and past dates */}
-                    {(isToday || isPast) && (
-                      dayCompletion === 6 ? (
-                        <span className="text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 font-medium">
-                          🎉 全部完成
-                        </span>
-                      ) : (
-                        <span className="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-700 font-medium">
-                          ✅ {dayCompletion}/{todayTotal}
-                        </span>
-                      )
-                    )}
-                    <Badge
-                      variant={carbDayBadgeVariant[day.carbDayType]}
-                      size="sm"
-                    >
-                      {getCarbDayTypeName(day.carbDayType)}
-                    </Badge>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </Card>
-
-        {/* Summary Link */}
-        {plan.status === 'COMPLETED' && (
-          <Link href={`/plan/summary/${plan.id}`}>
-            <Card
-              variant="success"
-              className="mb-4 cursor-pointer hover:opacity-80 transition-opacity"
+      <PageContainer className="pt-16 pb-24">
+        {/* Cycle Navigation */}
+        <Card className="mb-4 !p-3">
+          <div className="flex items-center justify-between">
+            <button
+              onClick={goToPrevCycle}
+              disabled={currentCycleNumber <= 1}
+              className={`w-8 h-8 flex items-center justify-center rounded-full text-[#5D6D7E] ${
+                currentCycleNumber <= 1 ? 'opacity-30' : 'hover:bg-[#EEF2F7]'
+              }`}
             >
-              <div className="flex items-center justify-between">
-                <span className="font-medium text-[#2C3E50]">查看周期总结</span>
-                <span className="text-[#4A90D9]">→</span>
+              ◀
+            </button>
+            <div className="text-center">
+              <div className="text-lg font-semibold text-[#2C3E50]">
+                第{currentCycleNumber}周期 · 共6天
               </div>
-            </Card>
-          </Link>
+              <div className="text-xs text-[#5D6D7E]">
+                当前第{currentInfo?.totalDays}天 · 周期第{currentInfo?.dayInCycle}天
+              </div>
+            </div>
+            <button
+              onClick={goToNextCycle}
+              className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-[#EEF2F7] text-[#5D6D7E]"
+            >
+              ▶
+            </button>
+          </div>
+        </Card>
+
+        {/* 6-Day Cycle Calendar */}
+        <Card className="mb-4 !p-3">
+          {/* Cycle position headers (1-6) */}
+          <div className="grid grid-cols-6 gap-1.5 mb-2">
+            {cycleData.map((day) => (
+              <div
+                key={`header-${day.dayInCycle}`}
+                className="text-center text-xs text-[#AEB6BF]"
+              >
+                第{day.dayInCycle}天
+              </div>
+            ))}
+          </div>
+
+          {/* Date row */}
+          <div className="grid grid-cols-6 gap-1.5 mb-2">
+            {cycleData.map((day) => (
+              <div
+                key={`date-${day.dateStr}`}
+                className={`text-center text-xs ${
+                  day.dateStr === todayStr ? 'text-[#4A90D9] font-semibold' : 'text-[#5D6D7E]'
+                }`}
+              >
+                {day.date.getMonth() + 1}/{day.date.getDate()}
+              </div>
+            ))}
+          </div>
+
+          {/* Day cells */}
+          <div className="grid grid-cols-6 gap-1.5">
+            {cycleData.map((day) => (
+              <DayCell
+                key={day.dateStr}
+                date={day.date}
+                dayNumber={day.dayNumber}
+                carbDayType={day.carbDayType}
+                status={day.status}
+                isOnTarget={day.isOnTarget}
+                completionPercent={day.completionPercent}
+                onClick={() => handleDayClick(day)}
+              />
+            ))}
+          </div>
+
+          {/* Pattern indicator */}
+          <div className="mt-3 pt-3 border-t border-[#EEF2F7]">
+            <div className="text-center text-xs text-[#AEB6BF]">
+              112113模式：低-低-中-低-低-高
+            </div>
+          </div>
+        </Card>
+
+        {/* Cycle Stats */}
+        <div className="mb-4">
+          <CycleStats
+            cycleNumber={currentCycleNumber}
+            totalDays={CYCLE_LENGTH}
+            completedDays={completedDays}
+            onTargetDays={onTargetDays}
+          />
+        </div>
+
+        {/* Today's quick status */}
+        {todayInCycle && (
+          <Card className="mb-4 !p-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-medium text-[#2C3E50]">今日进度</h3>
+                <p className="text-xs text-[#5D6D7E]">
+                  {getCarbDayTypeName(todayInCycle.carbDayType)} · 周期第{todayInCycle.dayInCycle}天
+                </p>
+              </div>
+              <div className="text-right">
+                <div className="text-2xl font-bold text-[#4A90D9]">{todayCompleted}/6</div>
+                <div className="text-xs text-[#5D6D7E]">
+                  {Math.round((todayCompleted / 6) * 100)}%
+                </div>
+              </div>
+            </div>
+            <div className="mt-3 w-full h-2 bg-[#E5E7EB] rounded-full overflow-hidden">
+              <div
+                className="h-full bg-[#4A90D9] rounded-full transition-all duration-500"
+                style={{ width: `${(todayCompleted / 6) * 100}%` }}
+              />
+            </div>
+          </Card>
         )}
 
         {/* Restart Button */}
-        <Button
-          variant="danger"
-          onClick={handleRestart}
-          className="w-full"
-        >
+        <Button variant="secondary" onClick={handleRestart} className="w-full">
           重新开始计划
         </Button>
       </PageContainer>
+
+      {/* Day Detail Modal */}
+      <DayDetailModal
+        isOpen={selectedDay !== null}
+        onClose={() => setSelectedDay(null)}
+        data={selectedDay}
+      />
 
       <BottomNav />
     </>

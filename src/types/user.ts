@@ -41,18 +41,12 @@ export interface IBodyMetrics {
   date: Date;
   weight: number;
   bodyFatPercentage?: number;
-  muscleMass?: number; // kg
-  waistCircumference?: number; // cm
-  note?: string;
   createdAt: Date;
 }
 
 export interface IBodyMetricsInput {
   weight: number;
   bodyFatPercentage?: number;
-  muscleMass?: number; // kg
-  waistCircumference?: number; // cm
-  note?: string;
   date?: Date; // defaults to today
 }
 

@@ -3,17 +3,21 @@
  */
 
 /**
- * Format date to YYYY-MM-DD string
+ * Format date to YYYY-MM-DD string (local timezone)
  */
 export function formatDate(date: Date): string {
-  return date.toISOString().split('T')[0];
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 }
 
 /**
- * Parse date string (YYYY-MM-DD) to Date object
+ * Parse date string (YYYY-MM-DD) to Date object at local midnight
  */
 export function parseDate(dateString: string): Date {
-  return new Date(dateString + 'T00:00:00');
+  const [year, month, day] = dateString.split('-').map(Number);
+  return new Date(year, month - 1, day, 0, 0, 0, 0);
 }
 
 /**

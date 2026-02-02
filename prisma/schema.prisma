@@ -25,16 +25,13 @@ model User {
 }
 
 model BodyMetrics {
-  id                 String   @id @default(cuid())
-  userId             String
-  date               DateTime @db.Date
-  weight             Float
-  bodyFatPercentage  Float?
-  muscleMass         Float?   // kg of muscle mass
-  waistCircumference Float?   // cm - useful for tracking visceral fat
-  note               String?  // optional note for the day
-  createdAt          DateTime @default(now())
-  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id                String   @id @default(cuid())
+  userId            String
+  date              DateTime @db.Date
+  weight            Float
+  bodyFatPercentage Float?
+  createdAt         DateTime @default(now())
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, date])
 }

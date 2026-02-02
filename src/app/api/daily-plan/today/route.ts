@@ -7,7 +7,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/auth';
 import { generateExercisePlan } from '@/utils/exercise';
-import { formatDate, getToday } from '@/utils/date';
+import { formatDate, getToday, getDaysBetween } from '@/utils/date';
 import { TCarbDayType } from '@/types/plan';
 
 export async function GET() {
@@ -83,9 +83,13 @@ export async function GET() {
     // Generate exercise plan based on carb day type
     const exercisePlan = generateExercisePlan(mealPlan.carbDayType as TCarbDayType);
 
+    // Calculate dynamic day number from plan start date
+    const daysSinceStart = getDaysBetween(plan.startDate, today);
+    const dynamicDayNumber = Math.max(1, daysSinceStart + 1); // At least day 1
+
     return NextResponse.json({
       date: todayStr,
-      dayNumber: mealPlan.dayNumber,
+      dayNumber: dynamicDayNumber,
       carbDayType: mealPlan.carbDayType,
       mealPlan: {
         id: mealPlan.id,

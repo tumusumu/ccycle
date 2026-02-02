@@ -9,48 +9,77 @@ export interface IMetricInputFormProps {
   onSubmit: (data: IBodyMetricsInput) => void;
   initialWeight?: number;
   initialBodyFat?: number;
-  initialMuscleMass?: number;
-  initialWaistCircumference?: number;
-  showAdvanced?: boolean;
+  initialDate?: Date;
+  showDatePicker?: boolean;
   isLoading?: boolean;
   className?: string;
+}
+
+// Format date to YYYY-MM-DD for input[type="date"]
+function formatDateForInput(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 }
 
 export function MetricInputForm({
   onSubmit,
   initialWeight,
   initialBodyFat,
-  initialMuscleMass,
-  initialWaistCircumference,
-  showAdvanced: initialShowAdvanced = false,
+  initialDate,
+  showDatePicker = false,
   isLoading = false,
   className = '',
 }: IMetricInputFormProps) {
   const [weight, setWeight] = useState<number>(initialWeight ?? 0);
   const [bodyFat, setBodyFat] = useState<number>(
-    initialBodyFat ? initialBodyFat * 100 : 0
+    initialBodyFat ? Math.round(initialBodyFat * 10000) / 100 : 0
   );
-  const [muscleMass, setMuscleMass] = useState<number>(initialMuscleMass ?? 0);
-  const [waistCircumference, setWaistCircumference] = useState<number>(
-    initialWaistCircumference ?? 0
+  const [selectedDate, setSelectedDate] = useState<string>(
+    formatDateForInput(initialDate ?? new Date())
   );
-  const [note, setNote] = useState<string>('');
-  const [showAdvanced, setShowAdvanced] = useState(initialShowAdvanced);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Parse date string to local Date object
+    let parsedDate: Date | undefined;
+    if (showDatePicker && selectedDate) {
+      const [year, month, day] = selectedDate.split('-').map(Number);
+      parsedDate = new Date(year, month - 1, day, 0, 0, 0, 0);
+    }
+
     onSubmit({
       weight,
       bodyFatPercentage: bodyFat > 0 ? bodyFat / 100 : undefined,
-      muscleMass: muscleMass > 0 ? muscleMass : undefined,
-      waistCircumference: waistCircumference > 0 ? waistCircumference : undefined,
-      note: note.trim() || undefined,
+      date: parsedDate,
     });
   };
+
+  // Get max date (today)
+  const maxDate = formatDateForInput(new Date());
 
   return (
     <form onSubmit={handleSubmit} className={className}>
       <div className="space-y-4">
+        {/* Date picker (optional) */}
+        {showDatePicker && (
+          <div>
+            <label className="block text-sm font-medium text-[#2C3E50] mb-1">
+              记录日期
+            </label>
+            <input
+              type="date"
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+              max={maxDate}
+              className="w-full px-3 py-2 text-sm border border-[#AEB6BF] rounded-[12px]
+                       focus:outline-none focus:ring-2 focus:ring-[#4A90D9] focus:border-transparent"
+            />
+          </div>
+        )}
+
         {/* Primary fields */}
         <Input
           label="体重 (kg)"
@@ -71,68 +100,6 @@ export function MetricInputForm({
           max={50}
           step={0.1}
         />
-
-        {/* Advanced fields toggle */}
-        <button
-          type="button"
-          onClick={() => setShowAdvanced(!showAdvanced)}
-          className="text-sm text-[#4A90D9] hover:underline flex items-center gap-1"
-        >
-          <svg
-            className={`w-4 h-4 transition-transform ${showAdvanced ? 'rotate-90' : ''}`}
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M9 5l7 7-7 7"
-            />
-          </svg>
-          更多指标
-        </button>
-
-        {/* Advanced fields */}
-        {showAdvanced && (
-          <div className="space-y-4 pt-2 border-t border-[#EEF2F7]">
-            <Input
-              label="肌肉量 (kg) - 可选"
-              type="number"
-              value={muscleMass || ''}
-              onChange={(v) => setMuscleMass(Number(v))}
-              min={10}
-              max={100}
-              step={0.1}
-            />
-
-            <Input
-              label="腰围 (cm) - 可选"
-              type="number"
-              value={waistCircumference || ''}
-              onChange={(v) => setWaistCircumference(Number(v))}
-              min={40}
-              max={200}
-              step={0.1}
-            />
-
-            <div>
-              <label className="block text-sm font-medium text-[#2C3E50] mb-1">
-                备注 - 可选
-              </label>
-              <textarea
-                value={note}
-                onChange={(e) => setNote(e.target.value)}
-                placeholder="今日状态、饮食、运动等..."
-                className="w-full px-3 py-2 text-sm border border-[#AEB6BF] rounded-[12px]
-                         focus:outline-none focus:ring-2 focus:ring-[#4A90D9] focus:border-transparent
-                         placeholder:text-[#AEB6BF] resize-none"
-                rows={2}
-              />
-            </div>
-          </div>
-        )}
 
         <Button type="submit" loading={isLoading} className="w-full">
           保存记录

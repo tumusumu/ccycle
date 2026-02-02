@@ -227,3 +227,65 @@ export function getPatternName(): string {
 export function getPatternDescription(): string {
   return '6天一循环: 低碳、低碳、中碳(2倍)、低碳、低碳、高碳(3倍)';
 }
+
+/**
+ * Calculate cycle number for a given date
+ * @param startDate - Plan start date
+ * @param currentDate - Target date
+ * @returns Cycle number (1-based)
+ */
+export function getCycleNumber(startDate: Date, currentDate: Date): number {
+  const start = new Date(startDate);
+  start.setHours(0, 0, 0, 0);
+
+  const current = new Date(currentDate);
+  current.setHours(0, 0, 0, 0);
+
+  const diffTime = current.getTime() - start.getTime();
+  const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+  return Math.floor(diffDays / CYCLE_LENGTH) + 1;
+}
+
+/**
+ * Get day position in current cycle (1-6)
+ * @param startDate - Plan start date
+ * @param currentDate - Target date
+ * @returns Day in cycle (1-6)
+ */
+export function getDayInCycle(startDate: Date, currentDate: Date): number {
+  const start = new Date(startDate);
+  start.setHours(0, 0, 0, 0);
+
+  const current = new Date(currentDate);
+  current.setHours(0, 0, 0, 0);
+
+  const diffTime = current.getTime() - start.getTime();
+  const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+  return (diffDays % CYCLE_LENGTH) + 1;
+}
+
+/**
+ * Get carb type for a specific date based on plan start
+ * @param startDate - Plan start date
+ * @param targetDate - Target date
+ * @returns Carb day type
+ */
+export function getCarbTypeForDate(startDate: Date, targetDate: Date): TCarbDayType {
+  const dayNumber = getDayNumberInCycle(startDate, targetDate);
+  return getCarbDayType(dayNumber);
+}
+
+/**
+ * Get cycle start date for a given cycle number
+ * @param planStartDate - Plan start date
+ * @param cycleNumber - Cycle number (1-based)
+ * @returns Start date of that cycle
+ */
+export function getCycleStartDate(planStartDate: Date, cycleNumber: number): Date {
+  const start = new Date(planStartDate);
+  start.setHours(0, 0, 0, 0);
+  start.setDate(start.getDate() + (cycleNumber - 1) * CYCLE_LENGTH);
+  return start;
+}

@@ -124,7 +124,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const date = body.date ? new Date(body.date) : getToday();
+    // Parse date - handle both Date objects (serialized as ISO string) and date strings
+    let date: Date;
+    if (body.date) {
+      const dateInput = new Date(body.date);
+      // Normalize to local midnight to avoid timezone issues
+      date = new Date(dateInput.getFullYear(), dateInput.getMonth(), dateInput.getDate(), 0, 0, 0, 0);
+    } else {
+      date = getToday();
+    }
 
     // Upsert body metrics for the date
     const metrics = await prisma.bodyMetrics.upsert({
@@ -137,18 +145,12 @@ export async function POST(request: NextRequest) {
       update: {
         weight: body.weight,
         bodyFatPercentage: body.bodyFatPercentage,
-        muscleMass: body.muscleMass,
-        waistCircumference: body.waistCircumference,
-        note: body.note,
       },
       create: {
         userId: user.id,
         date: date,
         weight: body.weight,
         bodyFatPercentage: body.bodyFatPercentage,
-        muscleMass: body.muscleMass,
-        waistCircumference: body.waistCircumference,
-        note: body.note,
       },
     });
 

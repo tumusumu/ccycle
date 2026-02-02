@@ -74,6 +74,57 @@
 
 ---
 
+## 🔐 用户认证机制
+
+项目采用轻量级的 Cookie-based 用户认证方案，实现多用户数据隔离。
+
+### 认证流程
+
+```
+用户注册 → 设置 Cookie (ccycle_user_id) → 后续请求自动携带 → 服务端验证
+```
+
+### 核心组件
+
+| 组件 | 路径 | 说明 |
+|------|------|------|
+| 认证工具 | `src/lib/auth.ts` | 服务端认证函数 |
+| 用户 Hook | `src/hooks/use-current-user.ts` | 客户端用户状态管理 |
+| 登录页面 | `src/app/login/page.tsx` | 用户名登录入口 |
+
+### 认证函数
+
+```typescript
+// 服务端获取当前用户
+import { getCurrentUser, getCurrentUserId } from '@/lib/auth';
+
+// 在 API 路由中使用
+const user = await getCurrentUser();
+if (!user) {
+  return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+}
+```
+
+### 数据隔离
+
+- 所有 API 路由通过 `getCurrentUser()` 获取当前用户
+- 数据查询自动绑定 `userId` 条件
+- localStorage key 包含用户 ID，避免数据混淆
+- 不同用户之间数据完全隔离
+
+### Cookie 配置
+
+```typescript
+{
+  name: 'ccycle_user_id',
+  path: '/',
+  maxAge: 365 * 24 * 60 * 60,  // 1 年有效期
+  sameSite: 'lax'
+}
+```
+
+---
+
 ## 🚀 快速开始
 
 ### 环境要求
@@ -186,20 +237,25 @@ ccycle/
 - [x] 技术栈选型
 - [x] UI 设计规范
 - [x] 数据库设计
+- [x] 用户认证系统 (Cookie-based)
+- [x] 多用户数据隔离
+- [x] 用户引导页（体重/体脂率/性别输入）
+- [x] 碳循环计算核心逻辑 (112113 六天循环)
+- [x] 每日饮食方案生成
+- [x] 饮食摄入记录与追踪
+- [x] 身体指标跟踪系统 (体重/体脂率)
+- [x] 主仪表板营养环形图 (含卡路里、超标预警)
+- [x] /stats 统计页面 (recharts 趋势图)
+- [x] /plan 计划页面 (六天周期视图)
+- [x] 历史数据补录功能
 
 ### 🚧 进行中
-- [ ] 用户引导页（体重/体脂率/性别输入）
-- [ ] 碳循环计算核心逻辑
-- [ ] 每日饮食方案生成
+- [ ] 运动记录功能增强
 
 ### 📅 计划中
-- [ ] 饮食摄入记录与追踪
-- [ ] 主仪表板与数据可视化
-- [ ] 历史数据查看
-- [ ] 体重趋势图表
-- [ ] 运动记录功能
 - [ ] 用户偏好设置
 - [ ] 导出报告功能
+- [ ] 深色模式支持
 
 ---
 

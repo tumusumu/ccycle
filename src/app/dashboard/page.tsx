@@ -26,9 +26,6 @@ interface TodayData {
   date: string;
   dayNumber: number;
   carbDayType: TCarbDayType;
-  mealPlan: {
-    waterLiters: number;
-  };
 }
 
 const carbDayBadgeVariant: Record<TCarbDayType, 'low' | 'medium' | 'high'> = {
@@ -117,12 +114,9 @@ export default function DashboardPage() {
         carbs: calculatedTargets.carbs,
         protein: calculatedTargets.protein,
         fat: calculatedTargets.fat,
-        water: calculatedTargets.water,
+        calories: calculatedTargets.calories,
       },
-      totalNutrition: {
-        ...dailyNutrition,
-        water: todayData.mealPlan.waterLiters * 1000,
-      },
+      totalNutrition: dailyNutrition,
     };
   }, [userData, todayData, intake]);
 
@@ -221,7 +215,7 @@ export default function DashboardPage() {
             <ProgressRing value={Math.round(totalNutrition.carbs)} max={targets.carbs} color="carb" label="碳水" size="sm" />
             <ProgressRing value={Math.round(totalNutrition.protein)} max={targets.protein} color="protein" label="蛋白质" size="sm" />
             <ProgressRing value={Math.round(totalNutrition.fat)} max={targets.fat} color="fat" label="脂肪" size="sm" />
-            <ProgressRing value={0} max={targets.water} color="water" label="饮水" unit="ml" size="sm" />
+            <ProgressRing value={Math.round(totalNutrition.calories)} max={targets.calories} color="calories" label="热量" unit="" size="sm" />
           </div>
         </Card>
 

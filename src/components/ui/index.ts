@@ -6,3 +6,4 @@ export * from './checkbox';
 export * from './badge';
 export * from './progress-bar';
 export * from './modal';
+export * from './nutrition-status-icon';
