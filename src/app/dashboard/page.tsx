@@ -20,7 +20,6 @@ import {
   calculateDailyNutrition,
   intakeToMealsData,
   IUserData,
-  IReferencePortions,
 } from '@/lib/nutrition-calculator';
 
 interface TodayData {
@@ -40,7 +39,7 @@ const carbDayBadgeVariant: Record<TCarbDayType, 'low' | 'medium' | 'high'> = {
 
 export default function DashboardPage() {
   const router = useRouter();
-  const { intake } = useIntake();
+  const { intake, isLoading: intakeLoading } = useIntake();
   const [userData, setUserData] = useState<IUserData | null>(null);
   const [todayData, setTodayData] = useState<TodayData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -127,7 +126,7 @@ export default function DashboardPage() {
     };
   }, [userData, todayData, intake]);
 
-  if (isLoading) {
+  if (isLoading || intakeLoading) {
     return (
       <div className="min-h-screen bg-[#EEF2F7] flex items-center justify-center">
         <div className="text-[#5D6D7E]">加载中...</div>
