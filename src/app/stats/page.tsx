@@ -7,6 +7,7 @@ import { BottomNav } from '@/components/layout/bottom-nav';
 import { PageContainer } from '@/components/layout/page-container';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Modal } from '@/components/ui/modal';
 import { IBodyMetrics, IUserProfile } from '@/types/user';
 import {
   LineChart,
@@ -58,6 +59,9 @@ export default function StatsPage() {
   const [user, setUser] = useState<IUserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [period, setPeriod] = useState<'week' | 'month' | 'all'>('month');
+  const [isHeightModalOpen, setIsHeightModalOpen] = useState(false);
+  const [heightInput, setHeightInput] = useState('');
+  const [isSavingHeight, setIsSavingHeight] = useState(false);
 
   const fetchData = useCallback(async () => {
     try {
@@ -114,6 +118,35 @@ export default function StatsPage() {
       fetchData();
     } catch (err) {
       console.error('Error achieving goal:', err);
+    }
+  };
+
+  const handleOpenHeightModal = () => {
+    setHeightInput(user?.height?.toString() || '');
+    setIsHeightModalOpen(true);
+  };
+
+  const handleSaveHeight = async () => {
+    const height = parseFloat(heightInput);
+    if (isNaN(height) || height <= 0) {
+      return;
+    }
+
+    setIsSavingHeight(true);
+    try {
+      const res = await fetch('/api/user', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ height }),
+      });
+      if (res.ok) {
+        setIsHeightModalOpen(false);
+        fetchData();
+      }
+    } catch (err) {
+      console.error('Error saving height:', err);
+    } finally {
+      setIsSavingHeight(false);
     }
   };
 
@@ -192,14 +225,17 @@ export default function StatsPage() {
           <>
             {/* BMI Card */}
             <Card className="mb-4">
-              <div className="flex items-start justify-between">
+              <div
+                className={`flex items-start justify-between ${!user?.height ? 'cursor-pointer' : ''}`}
+                onClick={!user?.height ? handleOpenHeightModal : undefined}
+              >
                 <div className="flex-1">
                   <BMIDisplay bmi={currentBMI} size="md" />
                 </div>
                 {!user?.height && (
-                  <Link href="/settings" className="text-xs text-[#4A90D9]">
-                    设置身高
-                  </Link>
+                  <span className="text-xs text-[#4A90D9]">
+                    点击设置身高
+                  </span>
                 )}
               </div>
             </Card>
@@ -360,6 +396,47 @@ export default function StatsPage() {
           </Card>
         )}
       </PageContainer>
+
+      {/* Height Setting Modal */}
+      <Modal
+        isOpen={isHeightModalOpen}
+        onClose={() => setIsHeightModalOpen(false)}
+        title="设置身高"
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-[#2C3E50] mb-2">
+              身高 (cm)
+            </label>
+            <input
+              type="number"
+              value={heightInput}
+              onChange={(e) => setHeightInput(e.target.value)}
+              placeholder="请输入身高"
+              className="w-full px-3 py-2 border border-[#D5DBDB] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#4A90D9] focus:border-transparent"
+              min="100"
+              max="250"
+              step="0.1"
+            />
+          </div>
+          <div className="flex gap-3">
+            <Button
+              variant="secondary"
+              className="flex-1"
+              onClick={() => setIsHeightModalOpen(false)}
+            >
+              取消
+            </Button>
+            <Button
+              className="flex-1"
+              onClick={handleSaveHeight}
+              disabled={isSavingHeight || !heightInput}
+            >
+              {isSavingHeight ? '保存中...' : '保存'}
+            </Button>
+          </div>
+        </div>
+      </Modal>
 
       <BottomNav />
     </>

@@ -1,36 +1,257 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 碳循112 (CCycle)
 
-## Getting Started
+<div align="center">
 
-First, run the development server:
+**智能碳水循环饮食计算与跟踪系统**
 
+一款基于科学碳水循环方法论的营养管理应用，帮助用户精准制定个性化饮食方案并追踪每日营养摄入。
+
+[功能特点](#功能特点) • [快速开始](#快速开始) • [技术栈](#技术栈) • [项目结构](#项目结构) • [开发路线图](#开发路线图)
+
+</div>
+
+---
+
+## 📖 项目简介
+
+**碳循112** 是一款专注于碳水循环饮食管理的 Web 应用。基于"112/113"碳循环模式，根据用户的体重、体脂率和性别，自动计算每日所需的碳水化合物、蛋白质和脂肪摄入量，并提供详细的饮食方案和营养追踪功能。
+
+### 什么是碳水循环？
+
+碳水循环是一种通过周期性调整碳水化合物摄入量来优化身体代谢的饮食策略：
+- **低碳日 (1g/kg)**: 促进脂肪燃烧
+- **中碳日 (2g/kg)**: 平衡代谢
+- **高碳日 (3g/kg)**: 补充糖原，防止代谢下降
+
+---
+
+## ✨ 功能特点
+
+### 🎯 智能计算引擎
+- 基于体重、体脂率、性别自动计算营养素需求
+- 支持 112/113 两种碳循环模式
+- 动态调整蛋白质和脂肪比例
+
+### 📊 每日饮食方案
+- 自动生成 4 餐食谱（早/午/加餐/晚）
+- 实时显示当日碳水类型（低/中/高碳日）
+- 智能标注限制食物（水果、白面等）
+
+### 📈 营养追踪系统
+- 可视化环形图展示营养素完成度
+- 逐餐打卡记录
+- 饮水量追踪（4L+ 目标）
+
+### 🏋️ 运动指导
+- 根据碳水日类型提供运动建议
+- 有氧与力量训练时间规划
+
+### 📱 友好的用户体验
+- 温和柔美的色彩系统
+- 卡片化布局
+- 移动端适配
+
+---
+
+## 🛠️ 技术栈
+
+### 核心框架
+- **Next.js 14+** - App Router + 服务端组件
+- **TypeScript 5** - 严格模式，类型安全
+- **React 19** - 最新特性支持
+
+### 样式与UI
+- **Tailwind CSS 4** - 原子化CSS
+- **响应式设计** - 移动优先
+
+### 数据层
+- **PostgreSQL** - 关系型数据库
+- **Prisma ORM** - 类型安全的数据访问
+- **Neon Serverless** - 云端 PostgreSQL
+
+### 部署
+- **Vercel** - 零配置部署
+
+---
+
+## 🚀 快速开始
+
+### 环境要求
+- Node.js 18+
+- PostgreSQL 数据库（或 Neon Serverless）
+
+### 安装步骤
+
+1. **克隆项目**
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+git clone https://github.com/your-username/ccycle.git
+cd ccycle
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+2. **安装依赖**
+```bash
+npm install
+```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+3. **配置环境变量**
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+创建 `.env` 文件：
+```env
+# 数据库连接
+DATABASE_URL="postgresql://user:password@localhost:5432/ccycle"
 
-## Learn More
+# 应用配置
+NEXT_PUBLIC_APP_URL="http://localhost:3000"
+```
 
-To learn more about Next.js, take a look at the following resources:
+4. **初始化数据库**
+```bash
+# 生成 Prisma Client
+npx prisma generate
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+# 运行数据库迁移
+npx prisma migrate dev
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+# (可选) 填充测试数据
+npx prisma db seed
+```
 
-## Deploy on Vercel
+5. **启动开发服务器**
+```bash
+npm run dev
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+打开浏览器访问 [http://localhost:3000](http://localhost:3000)
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+---
+
+## 📁 项目结构
+
+```
+ccycle/
+├── src/
+│   ├── app/                    # Next.js App Router
+│   │   ├── api/                # API 路由
+│   │   │   ├── user/           # 用户接口
+│   │   │   ├── plan/           # 饮食方案接口
+│   │   │   └── intake/         # 摄入记录接口
+│   │   ├── onboarding/         # 用户引导
+│   │   ├── dashboard/          # 主仪表板
+│   │   ├── plan/               # 饮食方案页
+│   │   └── log/                # 饮食记录页
+│   ├── components/             # React 组件
+│   │   ├── layout/             # 布局组件
+│   │   ├── ui/                 # 通用 UI 组件
+│   │   ├── user-profile/       # 用户信息组件
+│   │   ├── daily-plan/         # 饮食方案组件
+│   │   └── nutrition-tracker/  # 营养追踪组件
+│   ├── context/                # React Context
+│   ├── utils/                  # 工具函数
+│   │   ├── carbon-cycle.ts     # 碳循环计算核心
+│   │   ├── nutrition.ts        # 营养素计算
+│   │   └── date.ts             # 日期处理
+│   └── types/                  # TypeScript 类型
+├── prisma/
+│   └── schema.prisma           # 数据库 Schema
+├── public/                     # 静态资源
+├── CLAUDE.md                   # AI 开发文档
+├── UI_DESIGN.md                # UI 设计规范
+└── README.md                   # 本文件
+```
+
+---
+
+## 🎨 设计系统
+
+项目采用温和友好的健康类 APP 风格，详细设计规范请查看 [UI_DESIGN.md](./UI_DESIGN.md)。
+
+### 核心色彩
+- **主色**: `#4A90D9` (蓝色)
+- **碳水**: `#F5C542` (暖黄)
+- **蛋白质**: `#E8A0BF` (粉色)
+- **脂肪**: `#A8D5BA` (薄荷绿)
+- **饮水**: `#7EC8E3` (天蓝)
+
+---
+
+## 📋 开发路线图
+
+### ✅ 已完成
+- [x] 项目初始化
+- [x] 技术栈选型
+- [x] UI 设计规范
+- [x] 数据库设计
+
+### 🚧 进行中
+- [ ] 用户引导页（体重/体脂率/性别输入）
+- [ ] 碳循环计算核心逻辑
+- [ ] 每日饮食方案生成
+
+### 📅 计划中
+- [ ] 饮食摄入记录与追踪
+- [ ] 主仪表板与数据可视化
+- [ ] 历史数据查看
+- [ ] 体重趋势图表
+- [ ] 运动记录功能
+- [ ] 用户偏好设置
+- [ ] 导出报告功能
+
+---
+
+## 📝 开发规范
+
+### 编码约定
+- **组件**: 函数组件 + Hooks，PascalCase 命名
+- **文件名**: kebab-case (如 `daily-plan.tsx`)
+- **类型/接口**: PascalCase，以 `I` 开头 (如 `IUserProfile`)
+- **工具函数**: camelCase
+- **常量**: UPPER_SNAKE_CASE
+- **严格 TypeScript**: 禁止使用 `any`
+
+### 提交规范
+```
+feat: 添加新功能
+fix: 修复 bug
+docs: 文档更新
+style: 代码格式调整
+refactor: 代码重构
+test: 测试相关
+chore: 构建/配置相关
+```
+
+---
+
+## 🤝 贡献指南
+
+欢迎提交 Issue 和 Pull Request！
+
+1. Fork 本仓库
+2. 创建特性分支 (`git checkout -b feature/AmazingFeature`)
+3. 提交更改 (`git commit -m 'feat: Add some AmazingFeature'`)
+4. 推送到分支 (`git push origin feature/AmazingFeature`)
+5. 提交 Pull Request
+
+---
+
+## 📄 许可证
+
+本项目采用 MIT 许可证 - 详见 [LICENSE](LICENSE) 文件
+
+---
+
+## 📞 联系方式
+
+如有问题或建议，欢迎通过以下方式联系：
+
+- **项目主页**: [https://ccycle.app](https://ccycle.app)
+- **问题反馈**: [GitHub Issues](https://github.com/your-username/ccycle/issues)
+
+---
+
+<div align="center">
+
+**用科学的方法，遇见更好的自己 💪**
+
+Made with ❤️ by CCycle Team
+
+</div>
