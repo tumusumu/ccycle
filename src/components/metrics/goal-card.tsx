@@ -42,7 +42,8 @@ function formatValue(value: number, goalType: TGoalType): string {
 
 function formatDate(date: Date | string): string {
   const d = new Date(date);
-  return `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()}`;
+  // 使用 UTC 方法，因为数据库日期存储为 UTC 午夜
+  return `${d.getUTCFullYear()}/${d.getUTCMonth() + 1}/${d.getUTCDate()}`;
 }
 
 export function GoalCard({

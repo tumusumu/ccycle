@@ -6,6 +6,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { getCurrentUser } from '@/lib/auth';
 
 interface RouteParams {
   params: Promise<{
@@ -15,6 +16,14 @@ interface RouteParams {
 
 export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
+    const user = await getCurrentUser();
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Unauthorized', code: 'NO_USER' },
+        { status: 401 }
+      );
+    }
+
     const { cyclePlanId } = await params;
 
     const summary = await prisma.cycleSummary.findUnique({
@@ -31,6 +40,14 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       );
     }
 
+    // 验证所有权
+    if (summary.cyclePlan.userId !== user.id) {
+      return NextResponse.json(
+        { error: 'Forbidden' },
+        { status: 403 }
+      );
+    }
+
     return NextResponse.json(summary);
   } catch (error) {
     console.error('Error fetching summary:', error);
@@ -43,6 +60,14 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
 export async function POST(request: NextRequest, { params }: RouteParams) {
   try {
+    const user = await getCurrentUser();
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Unauthorized', code: 'NO_USER' },
+        { status: 401 }
+      );
+    }
+
     const { cyclePlanId } = await params;
     const body = (await request.json()) as {
       notes?: string;
@@ -66,6 +91,14 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json(
         { error: 'Plan not found' },
         { status: 404 }
+      );
+    }
+
+    // 验证所有权
+    if (plan.userId !== user.id) {
+      return NextResponse.json(
+        { error: 'Forbidden' },
+        { status: 403 }
       );
     }
 

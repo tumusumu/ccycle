@@ -106,7 +106,6 @@ export function BottomNav({ className = '' }: IBottomNavProps) {
       className={`
         fixed bottom-0 left-0 right-0 z-40
         bg-white
-        px-2 py-2
         safe-area-bottom
         ${className}
       `}
@@ -115,14 +114,14 @@ export function BottomNav({ className = '' }: IBottomNavProps) {
         borderTop: '1px solid #EEF2F7',
       }}
     >
-      <div className="flex items-center justify-around max-w-lg mx-auto">
+      <div className="flex items-center justify-around max-w-lg mx-auto h-16">
         {navItems.map((item) => {
           const isActive = activeTab === item.key;
           return (
             <Link
               key={item.key}
               href={item.href}
-              className="flex flex-col items-center gap-1 px-6 py-1"
+              className="flex flex-col items-center justify-center gap-1 min-w-[60px] min-h-[48px] flex-1 transition-colors duration-200"
             >
               {item.icon(isActive)}
               <span

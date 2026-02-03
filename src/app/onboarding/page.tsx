@@ -8,24 +8,15 @@ import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { Card } from '@/components/ui/card';
 import { TGender } from '@/types/user';
-import { setCurrentUserId } from '@/hooks/use-current-user';
-
-const USERNAME_REGEX = /^[a-zA-Z0-9]{4,20}$/;
-
-const genderOptions = [
-  { value: 'MALE', label: '男性' },
-  { value: 'FEMALE', label: '女性' },
-];
 
 export default function OnboardingPage() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingUser, setIsLoadingUser] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [currentUsername, setCurrentUsername] = useState<string>('');
 
   // Form data
-  const [username, setUsername] = useState('');
-  const [usernameError, setUsernameError] = useState<string | null>(null);
-  const [isCheckingUsername, setIsCheckingUsername] = useState(false);
   const [birthYear, setBirthYear] = useState<number | null>(null);
   const [gender, setGender] = useState<TGender>('MALE');
   const [weight, setWeight] = useState<number>(70);
@@ -44,51 +35,42 @@ export default function OnboardingPage() {
     return options;
   }, [currentYear]);
 
-  // Debounced username validation
+  const genderOptions = [
+    { value: 'MALE', label: '男性' },
+    { value: 'FEMALE', label: '女性' },
+  ];
+
+  // 获取当前用户信息
   useEffect(() => {
-    if (!username) {
-      setUsernameError(null);
-      return;
-    }
-
-    // Check format first
-    if (!USERNAME_REGEX.test(username)) {
-      if (username.length < 4) {
-        setUsernameError('用户名至少需要4个字符');
-      } else if (username.length > 20) {
-        setUsernameError('用户名最多20个字符');
-      } else {
-        setUsernameError('用户名只能包含字母和数字');
-      }
-      return;
-    }
-
-    // Check availability with debounce
-    const timeoutId = setTimeout(async () => {
-      setIsCheckingUsername(true);
+    const fetchUser = async () => {
       try {
-        const res = await fetch(`/api/user/check-username?username=${encodeURIComponent(username)}`);
-        const data = await res.json();
-        if (!data.valid) {
-          setUsernameError(data.error);
-        } else {
-          setUsernameError(null);
+        const res = await fetch('/api/user');
+        if (res.ok) {
+          const userData = await res.json();
+          setCurrentUsername(userData.username);
+          
+          // 如果用户已经完善了信息，检查是否需要跳转
+          if (userData.weight > 0 && userData.bodyFatPercentage > 0) {
+            // 用户已经完成 onboarding，跳转到创建计划或仪表板
+            router.push('/plan/new');
+            return;
+          }
+        } else if (res.status === 404) {
+          // 用户不存在，跳转到注册
+          router.push('/register');
         }
       } catch {
-        setUsernameError('验证失败，请稍后再试');
+        setError('获取用户信息失败，请刷新页面重试');
       } finally {
-        setIsCheckingUsername(false);
+        setIsLoadingUser(false);
       }
-    }, 500);
+    };
 
-    return () => clearTimeout(timeoutId);
-  }, [username]);
+    fetchUser();
+  }, [router]);
 
   const isFormValid = () => {
     return (
-      username &&
-      !usernameError &&
-      !isCheckingUsername &&
       birthYear &&
       age !== null &&
       age >= 18 &&
@@ -107,11 +89,11 @@ export default function OnboardingPage() {
     setError(null);
 
     try {
+      // 更新用户信息（PUT 而不是 POST）
       const res = await fetch('/api/user', {
-        method: 'POST',
+        method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          username,
           birthYear,
           gender,
           weight,
@@ -122,27 +104,38 @@ export default function OnboardingPage() {
       const data = await res.json();
 
       if (!res.ok) {
-        throw new Error(data.error || '注册失败');
+        throw new Error(data.error || '保存失败');
       }
 
-      // Store user ID for authentication
-      setCurrentUserId(data.id);
-
-      // Redirect to plan creation page
+      // 跳转到计划创建页面
       router.push('/plan/new');
     } catch (err) {
-      setError(err instanceof Error ? err.message : '注册失败，请稍后再试');
+      setError(err instanceof Error ? err.message : '保存失败，请稍后再试');
     } finally {
       setIsLoading(false);
     }
   };
 
+  if (isLoadingUser) {
+    return (
+      <PageContainer>
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="text-[#5D6D7E]">加载中...</div>
+        </div>
+      </PageContainer>
+    );
+  }
+
   return (
     <PageContainer>
       <div className="min-h-screen flex flex-col justify-center py-8">
+        {/* 欢迎信息 */}
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-[#2C3E50]">CCycle 碳循112</h1>
-          <p className="text-[#5D6D7E] mt-2">创建账户，开启碳循环之旅</p>
+          <div className="text-4xl mb-3">👋</div>
+          <h1 className="text-3xl font-bold text-[#2C3E50]">
+            欢迎，{currentUsername}！
+          </h1>
+          <p className="text-[#5D6D7E] mt-2">请完善您的个人信息，开启碳循环之旅</p>
         </div>
 
         {error && (
@@ -152,22 +145,11 @@ export default function OnboardingPage() {
         )}
 
         <Card className="space-y-4">
-          {/* Username */}
-          <div>
-            <Input
-              label="用户名"
-              type="text"
-              value={username}
-              onChange={(v) => setUsername(String(v))}
-              placeholder="4-20个字母或数字"
-              error={usernameError || undefined}
-            />
-            {isCheckingUsername && (
-              <p className="text-sm text-[#5D6D7E] mt-1">正在验证...</p>
-            )}
-            {!usernameError && username && USERNAME_REGEX.test(username) && !isCheckingUsername && (
-              <p className="text-sm text-[#27AE60] mt-1">用户名可用</p>
-            )}
+          <div className="pb-4 border-b border-[#D5DBDB]">
+            <h2 className="text-lg font-semibold text-[#2C3E50]">基本信息</h2>
+            <p className="text-sm text-[#5D6D7E] mt-1">
+              这些信息将用于计算您的个性化碳循环计划
+            </p>
           </div>
 
           {/* Birth Year */}
@@ -192,6 +174,13 @@ export default function OnboardingPage() {
             value={gender}
             onChange={(v) => setGender(v as TGender)}
           />
+
+          <div className="pt-4 pb-2 border-t border-[#D5DBDB]">
+            <h2 className="text-lg font-semibold text-[#2C3E50]">身体数据</h2>
+            <p className="text-sm text-[#5D6D7E] mt-1">
+              请如实填写，这将影响计划的准确性
+            </p>
+          </div>
 
           {/* Weight */}
           <div>
@@ -220,7 +209,7 @@ export default function OnboardingPage() {
               error={bodyFat < 5 || bodyFat > 45 ? '体脂率需在5-45%之间' : undefined}
             />
             <p className="text-sm text-[#5D6D7E] mt-1">
-              如果不确定，可以使用智能体脂秤测量，或根据外观估算
+              💡 如果不确定，可以使用智能体脂秤测量，或根据外观估算
             </p>
           </div>
 
@@ -230,7 +219,7 @@ export default function OnboardingPage() {
             disabled={!isFormValid()}
             className="w-full mt-6"
           >
-            注册
+            继续创建碳循环计划
           </Button>
         </Card>
       </div>

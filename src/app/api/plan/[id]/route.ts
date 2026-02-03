@@ -7,6 +7,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { getCurrentUser } from '@/lib/auth';
 import { TPlanStatus } from '@/types/plan';
 
 interface RouteParams {
@@ -17,6 +18,14 @@ interface RouteParams {
 
 export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
+    const user = await getCurrentUser();
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Unauthorized', code: 'NO_USER' },
+        { status: 401 }
+      );
+    }
+
     const { id } = await params;
 
     const plan = await prisma.cyclePlan.findUnique({
@@ -39,6 +48,14 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       );
     }
 
+    // 验证所有权
+    if (plan.userId !== user.id) {
+      return NextResponse.json(
+        { error: 'Forbidden' },
+        { status: 403 }
+      );
+    }
+
     return NextResponse.json(plan);
   } catch (error) {
     console.error('Error fetching plan:', error);
@@ -51,6 +68,14 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
 export async function PUT(request: NextRequest, { params }: RouteParams) {
   try {
+    const user = await getCurrentUser();
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Unauthorized', code: 'NO_USER' },
+        { status: 401 }
+      );
+    }
+
     const { id } = await params;
     const body = (await request.json()) as {
       status?: TPlanStatus;
@@ -65,6 +90,14 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json(
         { error: 'Plan not found' },
         { status: 404 }
+      );
+    }
+
+    // 验证所有权
+    if (plan.userId !== user.id) {
+      return NextResponse.json(
+        { error: 'Forbidden' },
+        { status: 403 }
       );
     }
 
@@ -88,6 +121,14 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
   try {
+    const user = await getCurrentUser();
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Unauthorized', code: 'NO_USER' },
+        { status: 401 }
+      );
+    }
+
     const { id } = await params;
 
     const plan = await prisma.cyclePlan.findUnique({
@@ -98,6 +139,14 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json(
         { error: 'Plan not found' },
         { status: 404 }
+      );
+    }
+
+    // 验证所有权
+    if (plan.userId !== user.id) {
+      return NextResponse.json(
+        { error: 'Forbidden' },
+        { status: 403 }
       );
     }
 

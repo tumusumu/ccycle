@@ -27,12 +27,36 @@ const CYCLE_LENGTH = 6; // 112113 pattern is 6 days
 export default function NewPlanPage() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
+  const [isCheckingPlan, setIsCheckingPlan] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [createdPlan, setCreatedPlan] = useState<CreatedPlan | null>(null);
 
   // Form data
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+
+  // 检查是否已有活跃计划，如果有则跳转到 dashboard
+  useEffect(() => {
+    const checkExistingPlan = async () => {
+      try {
+        const res = await fetch('/api/plan/current');
+        if (res.ok) {
+          const data = await res.json();
+          // 检查是否有活跃计划（ok: false 表示没有计划）
+          if (data.ok !== false) {
+            // 已有活跃计划，跳转到 dashboard
+            router.replace('/dashboard');
+            return;
+          }
+        }
+      } catch {
+        // 忽略错误，允许创建新计划
+      } finally {
+        setIsCheckingPlan(false);
+      }
+    };
+    checkExistingPlan();
+  }, [router]);
 
   // Get today's date in local timezone (YYYY-MM-DD format)
   const getTodayString = () => {
@@ -88,6 +112,12 @@ export default function NewPlanPage() {
   const handleCreatePlan = async () => {
     if (!startDate || !cycleInfo.isValid || startDate < todayString) return;
 
+    // 确认创建计划，防止误触
+    const confirmed = window.confirm(
+      `确定要创建从 ${startDate} 开始的碳循环计划吗？\n\n共 ${cycleInfo.fullCycles} 个完整周期（${cycleInfo.cycleDays} 天）`
+    );
+    if (!confirmed) return;
+
     setIsLoading(true);
     setError(null);
 
@@ -116,8 +146,20 @@ export default function NewPlanPage() {
   };
 
   const handleGoToDashboard = () => {
-    router.push('/dashboard');
+    // 使用 replace 而不是 push，防止用户回退到创建页面
+    router.replace('/dashboard');
   };
+
+  // 检查计划中，显示加载状态
+  if (isCheckingPlan) {
+    return (
+      <PageContainer>
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="text-[#5D6D7E]">加载中...</div>
+        </div>
+      </PageContainer>
+    );
+  }
 
   // Show calendar after plan is created
   if (createdPlan) {

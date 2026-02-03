@@ -33,10 +33,10 @@ export async function GET() {
     });
 
     if (!plan) {
-      return NextResponse.json(
-        { error: 'No active plan found' },
-        { status: 404 }
-      );
+      return NextResponse.json({
+        ok: false,
+        code: 'NO_PLAN',
+      });
     }
 
     const today = getToday();

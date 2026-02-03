@@ -7,6 +7,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { getCurrentUser } from '@/lib/auth';
 import { IBodyMetricsInput } from '@/types/user';
 
 interface RouteParams {
@@ -15,6 +16,14 @@ interface RouteParams {
 
 export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
+    const user = await getCurrentUser();
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Unauthorized', code: 'NO_USER' },
+        { status: 401 }
+      );
+    }
+
     const { id } = await params;
 
     const metrics = await prisma.bodyMetrics.findUnique({
@@ -25,6 +34,14 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json(
         { error: 'Body metrics record not found' },
         { status: 404 }
+      );
+    }
+
+    // 验证所有权
+    if (metrics.userId !== user.id) {
+      return NextResponse.json(
+        { error: 'Forbidden' },
+        { status: 403 }
       );
     }
 
@@ -40,6 +57,14 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
 export async function PATCH(request: NextRequest, { params }: RouteParams) {
   try {
+    const user = await getCurrentUser();
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Unauthorized', code: 'NO_USER' },
+        { status: 401 }
+      );
+    }
+
     const { id } = await params;
     const body = (await request.json()) as Partial<IBodyMetricsInput>;
 
@@ -51,6 +76,14 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json(
         { error: 'Body metrics record not found' },
         { status: 404 }
+      );
+    }
+
+    // 验证所有权
+    if (existingMetrics.userId !== user.id) {
+      return NextResponse.json(
+        { error: 'Forbidden' },
+        { status: 403 }
       );
     }
 
@@ -116,6 +149,14 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
   try {
+    const user = await getCurrentUser();
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Unauthorized', code: 'NO_USER' },
+        { status: 401 }
+      );
+    }
+
     const { id } = await params;
 
     const existingMetrics = await prisma.bodyMetrics.findUnique({
@@ -126,6 +167,14 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json(
         { error: 'Body metrics record not found' },
         { status: 404 }
+      );
+    }
+
+    // 验证所有权
+    if (existingMetrics.userId !== user.id) {
+      return NextResponse.json(
+        { error: 'Forbidden' },
+        { status: 403 }
       );
     }
 

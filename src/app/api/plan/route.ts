@@ -11,7 +11,7 @@ import { ICyclePlanInput } from '@/types/plan';
 import { TGender } from '@/types/user';
 import { getCarbDayType } from '@/utils/carbon-cycle';
 import { generateMealPlanData } from '@/utils/nutrition';
-import { addDays } from '@/utils/date';
+import { addDays, parseDate, getToday } from '@/utils/date';
 
 const DEFAULT_CYCLE_DAYS = 6; // One full 112113 cycle
 const CYCLE_LENGTH = 6; // 112113 pattern length
@@ -79,12 +79,11 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    const startDate = new Date(body.startDate);
-    startDate.setHours(0, 0, 0, 0);
+    // Parse date string to local midnight to avoid timezone issues
+    const startDate = parseDate(body.startDate);
 
     // Validate start date is not in the past
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const today = getToday();
     if (startDate < today) {
       return NextResponse.json(
         { error: '开始日期不能早于今天' },

@@ -7,7 +7,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/auth';
 import { generateExercisePlan } from '@/utils/exercise';
-import { formatDate, getToday, getDaysBetween } from '@/utils/date';
+import { formatDateFromDb, getToday, getTodayString, getDaysBetween } from '@/utils/date';
 import { TCarbDayType } from '@/types/plan';
 
 export async function GET() {
@@ -36,17 +36,17 @@ export async function GET() {
       );
     }
 
-    // Get today's date (normalized to start of day)
+    // Get today's date for DB queries
     const today = getToday();
-    const todayStr = formatDate(today);
+    const todayStr = getTodayString();
 
-    // Check if plan hasn't started yet
+    // Check if plan hasn't started yet (compare UTC dates)
     if (plan.startDate > today) {
       return NextResponse.json(
         {
           error: 'Plan has not started yet',
           code: 'PLAN_NOT_STARTED',
-          startDate: formatDate(plan.startDate),
+          startDate: formatDateFromDb(plan.startDate),
         },
         { status: 200 }
       );
@@ -84,8 +84,9 @@ export async function GET() {
     const exercisePlan = generateExercisePlan(mealPlan.carbDayType as TCarbDayType);
 
     // Calculate dynamic day number from plan start date
+    // Both plan.startDate and today are UTC midnight, so getDaysBetween works correctly
     const daysSinceStart = getDaysBetween(plan.startDate, today);
-    const dynamicDayNumber = Math.max(1, daysSinceStart + 1); // At least day 1
+    const dynamicDayNumber = Math.max(1, daysSinceStart + 1); // Day 1 = start date
 
     return NextResponse.json({
       date: todayStr,

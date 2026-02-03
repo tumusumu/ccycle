@@ -141,7 +141,7 @@ export default function StatsPage() {
 
   return (
     <>
-      <Header />
+      <Header showLogout />
 
       <PageContainer className="pt-16 pb-24">
         <div className="flex items-center justify-between mb-4">

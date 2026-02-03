@@ -6,8 +6,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
-// Username validation regex: letters and numbers only, 4-20 characters
-const USERNAME_REGEX = /^[a-zA-Z0-9]{4,20}$/;
+// Username validation: letters and numbers only, 3-20 characters (与前端和注册API保持一致)
 
 export async function GET(request: NextRequest) {
   try {
@@ -21,17 +20,20 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Validate format
-    if (!USERNAME_REGEX.test(username)) {
+    // 统一处理：去除空格
+    const normalizedUsername = username.trim();
+
+    // Validate format (与前端保持一致：3-20个字符)
+    if (!/^[a-zA-Z0-9]{3,20}$/.test(normalizedUsername)) {
       return NextResponse.json({
         valid: false,
-        error: '用户名必须由4-20个字母或数字组成',
+        error: '用户名必须由3-20个字母或数字组成',
       });
     }
 
     // Check if username exists
     const existingUser = await prisma.user.findUnique({
-      where: { username },
+      where: { username: normalizedUsername },
       select: { id: true },
     });
 

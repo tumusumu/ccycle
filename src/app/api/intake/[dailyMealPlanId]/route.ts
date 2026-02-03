@@ -6,6 +6,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { getCurrentUser } from '@/lib/auth';
 import { TIntakeItemKey, IMarkDayComplete } from '@/types/intake';
 
 interface RouteParams {
@@ -16,7 +17,35 @@ interface RouteParams {
 
 export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
+    const user = await getCurrentUser();
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Unauthorized', code: 'NO_USER' },
+        { status: 401 }
+      );
+    }
+
     const { dailyMealPlanId } = await params;
+
+    // 先验证 mealPlan 的所有权
+    const mealPlan = await prisma.dailyMealPlan.findUnique({
+      where: { id: dailyMealPlanId },
+      include: { cyclePlan: true },
+    });
+
+    if (!mealPlan) {
+      return NextResponse.json(
+        { error: 'Meal plan not found' },
+        { status: 404 }
+      );
+    }
+
+    if (mealPlan.cyclePlan.userId !== user.id) {
+      return NextResponse.json(
+        { error: 'Forbidden' },
+        { status: 403 }
+      );
+    }
 
     const record = await prisma.dailyIntakeRecord.findUnique({
       where: { dailyMealPlanId },
@@ -54,6 +83,14 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
 export async function PUT(request: NextRequest, { params }: RouteParams) {
   try {
+    const user = await getCurrentUser();
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Unauthorized', code: 'NO_USER' },
+        { status: 401 }
+      );
+    }
+
     const { dailyMealPlanId } = await params;
     const body = (await request.json()) as {
       itemKey?: TIntakeItemKey;
@@ -61,15 +98,24 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       markComplete?: IMarkDayComplete;
     };
 
-    // Verify the meal plan exists
+    // Verify the meal plan exists and check ownership
     const mealPlan = await prisma.dailyMealPlan.findUnique({
       where: { id: dailyMealPlanId },
+      include: { cyclePlan: true },
     });
 
     if (!mealPlan) {
       return NextResponse.json(
         { error: 'Meal plan not found' },
         { status: 404 }
+      );
+    }
+
+    // 验证所有权
+    if (mealPlan.cyclePlan.userId !== user.id) {
+      return NextResponse.json(
+        { error: 'Forbidden' },
+        { status: 403 }
       );
     }
 

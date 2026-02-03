@@ -1,7 +1,7 @@
 /**
  * User API Routes
  * GET: Get current user profile
- * POST: Create new user profile
+ * POST: Create new user profile (deprecated - now handled by /api/auth/register)
  * PUT: Update user profile
  */
 
@@ -85,6 +85,7 @@ export async function POST(request: NextRequest) {
     const user = await prisma.user.create({
       data: {
         username: body.username,
+        password: '', // This should come from auth/register now
         birthYear: body.birthYear,
         gender: body.gender,
         height: body.height,
@@ -126,27 +127,39 @@ export async function PUT(request: NextRequest) {
       );
     }
 
+    // Validate birthYear if provided
+    if (body.birthYear !== undefined) {
+      const currentYear = new Date().getFullYear();
+      const age = currentYear - body.birthYear;
+      if (age < 18 || age > 80) {
+        return NextResponse.json(
+          { error: '年龄需在18-80岁之间' },
+          { status: 400 }
+        );
+      }
+    }
+
     // Validate values if provided
     if (body.height !== undefined && (body.height <= 0 || body.height > 300)) {
       return NextResponse.json(
-        { error: 'Height must be between 0 and 300 cm' },
+        { error: '身高需在0-300cm之间' },
         { status: 400 }
       );
     }
 
-    if (body.weight !== undefined && (body.weight <= 0 || body.weight > 300)) {
+    if (body.weight !== undefined && (body.weight < 40 || body.weight > 150)) {
       return NextResponse.json(
-        { error: 'Weight must be between 0 and 300 kg' },
+        { error: '体重需在40-150kg之间' },
         { status: 400 }
       );
     }
 
     if (
       body.bodyFatPercentage !== undefined &&
-      (body.bodyFatPercentage < 0 || body.bodyFatPercentage > 1)
+      (body.bodyFatPercentage < 0.05 || body.bodyFatPercentage > 0.45)
     ) {
       return NextResponse.json(
-        { error: 'Body fat percentage must be between 0 and 1' },
+        { error: '体脂率需在5-45%之间' },
         { status: 400 }
       );
     }
@@ -154,9 +167,10 @@ export async function PUT(request: NextRequest) {
     const user = await prisma.user.update({
       where: { id: existingUser.id },
       data: {
+        ...(body.birthYear !== undefined && { birthYear: body.birthYear }),
         ...(body.gender && { gender: body.gender }),
         ...(body.height !== undefined && { height: body.height }),
-        ...(body.weight && { weight: body.weight }),
+        ...(body.weight !== undefined && { weight: body.weight }),
         ...(body.bodyFatPercentage !== undefined && {
           bodyFatPercentage: body.bodyFatPercentage,
         }),

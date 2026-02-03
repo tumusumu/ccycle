@@ -33,9 +33,20 @@ export function MetricInputForm({
   className = '',
 }: IMetricInputFormProps) {
   const [weight, setWeight] = useState<number>(initialWeight ?? 0);
-  const [bodyFat, setBodyFat] = useState<number>(
-    initialBodyFat ? Math.round(initialBodyFat * 10000) / 100 : 0
-  );
+  // Handle both decimal (0.20) and percentage (20) formats
+  const [bodyFat, setBodyFat] = useState<number>(() => {
+    if (!initialBodyFat) return 0;
+    // If value > 1, it's already a percentage (e.g., 20 for 20%)
+    // If value <= 1, it's a decimal (e.g., 0.20 for 20%)
+    let value: number;
+    if (initialBodyFat > 1) {
+      value = Math.round(initialBodyFat * 100) / 100;
+    } else {
+      value = Math.round(initialBodyFat * 10000) / 100;
+    }
+    // Cap at reasonable range (5-50%)
+    return Math.min(50, Math.max(0, value));
+  });
   const [selectedDate, setSelectedDate] = useState<string>(
     formatDateForInput(initialDate ?? new Date())
   );
@@ -52,6 +63,7 @@ export function MetricInputForm({
 
     onSubmit({
       weight,
+      // Convert percentage (20) to decimal (0.20) for API
       bodyFatPercentage: bodyFat > 0 ? bodyFat / 100 : undefined,
       date: parsedDate,
     });

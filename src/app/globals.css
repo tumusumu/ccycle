@@ -138,3 +138,13 @@ h1, h2, h3, h4, h5, h6 {
 .progress-fat {
   background: var(--color-fat);
 }
+
+/* 为iOS设备的安全区域添加底部内边距 */
+.safe-area-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* 为主内容区域预留底部导航空间 */
+.main-content {
+  padding-bottom: calc(4rem + env(safe-area-inset-bottom));
+}

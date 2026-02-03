@@ -28,6 +28,7 @@ export interface IUserProfileInput {
 }
 
 export interface IUserProfileUpdate {
+  birthYear?: number;
   gender?: TGender;
   height?: number; // cm
   weight?: number;
