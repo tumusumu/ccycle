@@ -2,7 +2,7 @@ import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
   appId: 'cn.suton.ccycle',
-  appName: '碳循112',
+  appName: '112113',
   webDir: 'out',
   server: {
     // 使用已部署的 Vercel 网站
