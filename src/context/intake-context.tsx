@@ -13,6 +13,7 @@ export interface IMealIntake {
   lunchRiceGrams: number;
   lunchMeatType: string;
   lunchMeatGrams: number;
+  lunchOliveOilMl: number;
   lunchCompleted: boolean;
   // Snack (add meal)
   snackRiceGrams: number;
@@ -23,6 +24,7 @@ export interface IMealIntake {
   dinnerRiceGrams: number;
   dinnerMeatType: string;
   dinnerMeatGrams: number;
+  dinnerOliveOilMl: number;
   dinnerCompleted: boolean;
   // Exercise
   strengthMinutes: number;
@@ -51,6 +53,7 @@ const defaultIntake: IMealIntake = {
   lunchRiceGrams: 0,
   lunchMeatType: '',
   lunchMeatGrams: 0,
+  lunchOliveOilMl: 0,
   lunchCompleted: false,
   snackRiceGrams: 0,
   snackMeatType: '',
@@ -59,6 +62,7 @@ const defaultIntake: IMealIntake = {
   dinnerRiceGrams: 0,
   dinnerMeatType: '',
   dinnerMeatGrams: 0,
+  dinnerOliveOilMl: 0,
   dinnerCompleted: false,
   strengthMinutes: 0,
   strengthCompleted: false,
@@ -105,6 +109,7 @@ export function IntakeProvider({ children }: { children: ReactNode }) {
             lunchRiceGrams: data.intake.lunchRiceGrams ?? 0,
             lunchMeatType: data.intake.lunchMeatType ?? '',
             lunchMeatGrams: data.intake.lunchMeatGrams ?? 0,
+            lunchOliveOilMl: data.intake.lunchOliveOilMl ?? 0,
             lunchCompleted: data.intake.lunchCompleted ?? false,
             snackRiceGrams: data.intake.snackRiceGrams ?? 0,
             snackMeatType: data.intake.snackMeatType ?? '',
@@ -113,6 +118,7 @@ export function IntakeProvider({ children }: { children: ReactNode }) {
             dinnerRiceGrams: data.intake.dinnerRiceGrams ?? 0,
             dinnerMeatType: data.intake.dinnerMeatType ?? '',
             dinnerMeatGrams: data.intake.dinnerMeatGrams ?? 0,
+            dinnerOliveOilMl: data.intake.dinnerOliveOilMl ?? 0,
             dinnerCompleted: data.intake.dinnerCompleted ?? false,
             strengthMinutes: data.intake.strengthMinutes ?? 0,
             strengthCompleted: data.intake.strengthCompleted ?? false,

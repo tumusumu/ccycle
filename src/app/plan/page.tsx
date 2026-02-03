@@ -16,7 +16,7 @@ import {
   getCycleStartDate,
   CYCLE_LENGTH,
 } from '@/utils/carbon-cycle';
-import { formatDate } from '@/utils/date';
+import { formatDate, formatDateFromDb, getToday, getTodayString, addDays, getDaysBetween, parseDate } from '@/utils/date';
 import { TCarbDayType } from '@/types/plan';
 import { useIntake, IMealIntake } from '@/context/intake-context';
 import {
@@ -25,6 +25,7 @@ import {
   intakeToMealsData,
   IUserData,
 } from '@/lib/nutrition-calculator';
+import { SugarControlChallenge } from '@/components/sugar-control-challenge';
 
 interface DailyPlan {
   date: string;
@@ -88,13 +89,9 @@ export default function PlanPage() {
   const [selectedDay, setSelectedDay] = useState<IDayDetailData | null>(null);
   const [currentCycleNumber, setCurrentCycleNumber] = useState<number>(1);
 
-  // Today's date
-  const today = useMemo(() => {
-    const d = new Date();
-    d.setHours(0, 0, 0, 0);
-    return d;
-  }, []);
-  const todayStr = formatDate(today);
+  // Today's date (UTC midnight for DB comparison)
+  const today = useMemo(() => getToday(), []);
+  const todayStr = getTodayString();
 
   // Today's completion
   const todayCompleted = useMemo(() => {
@@ -115,13 +112,16 @@ export default function PlanPage() {
         fetch('/api/user'),
       ]);
 
-      if (planRes.status === 404) {
-        router.push('/onboarding');
-        return;
-      }
       if (!planRes.ok) throw new Error('Failed to fetch plan');
 
       const planData = await planRes.json();
+
+      // 检查是否没有活跃计划
+      if (planData.ok === false && planData.code === 'NO_PLAN') {
+        router.push('/onboarding');
+        return;
+      }
+
       setPlan(planData);
 
       // Set initial cycle to current cycle
@@ -151,6 +151,7 @@ export default function PlanPage() {
   const cycleData = useMemo(() => {
     if (!plan) return [];
 
+    // plan.startDate 是 UTC 午夜的 Date
     const planStart = new Date(plan.startDate);
     const cycleStart = getCycleStartDate(planStart, currentCycleNumber);
 
@@ -166,12 +167,12 @@ export default function PlanPage() {
     }> = [];
 
     for (let i = 0; i < CYCLE_LENGTH; i++) {
-      const date = new Date(cycleStart);
-      date.setDate(cycleStart.getDate() + i);
-      const dateStr = formatDate(date);
+      // 使用 addDays 保持 UTC 午夜
+      const date = addDays(cycleStart, i);
+      const dateStr = formatDateFromDb(date);
 
-      // Calculate day number from plan start
-      const daysSinceStart = Math.floor((date.getTime() - planStart.getTime()) / (1000 * 60 * 60 * 24));
+      // 使用 getDaysBetween 计算天数差
+      const daysSinceStart = getDaysBetween(planStart, date);
       const dayNumber = daysSinceStart + 1;
       const dayInCycle = i + 1;
 
@@ -183,11 +184,12 @@ export default function PlanPage() {
       const completionCount = dateStr === todayStr ? todayCompleted : getCompletionCount(storedIntake);
       const completionPercent = Math.round((completionCount / 6) * 100);
 
-      // Determine status
+      // Determine status - compare date strings to avoid timezone issues
       let status: DayStatus = 'future';
+      const daysDiff = getDaysBetween(today, date);
       if (dateStr === todayStr) {
         status = 'today';
-      } else if (date < today) {
+      } else if (daysDiff < 0) {
         // Past day - check if there's any data
         if (completionCount === 0) {
           status = 'no-data'; // No records for this day
@@ -219,7 +221,7 @@ export default function PlanPage() {
     if (!plan) return null;
 
     const planStart = new Date(plan.startDate);
-    const totalDays = Math.floor((today.getTime() - planStart.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+    const totalDays = getDaysBetween(planStart, today) + 1;
     const currentCycle = getCycleNumber(planStart, today);
     const dayInCycle = getDayInCycle(planStart, today);
 
@@ -398,6 +400,9 @@ export default function PlanPage() {
             </div>
           </div>
         </Card>
+
+        {/* Sugar Control Challenge - 第一个月控糖挑战 */}
+        <SugarControlChallenge />
 
         {/* Cycle Stats */}
         <div className="mb-4">

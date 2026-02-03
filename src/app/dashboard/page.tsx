@@ -52,6 +52,13 @@ export default function DashboardPage() {
         return;
       }
       const user = await userRes.json();
+
+      // 检查用户是否已完成 onboarding（体重和体脂率不为0）
+      if (!user.weight || user.weight === 0 || !user.bodyFatPercentage || user.bodyFatPercentage === 0) {
+        router.push('/onboarding');
+        return;
+      }
+
       setUserData({
         weight: user.weight,
         bodyFatPercentage: user.bodyFatPercentage,
@@ -131,7 +138,7 @@ export default function DashboardPage() {
   if (planNotStarted) {
     return (
       <>
-        <Header />
+        <Header showLogout />
         <PageContainer className="pt-16">
           <div className="min-h-[60vh] flex flex-col items-center justify-center text-center">
             <div className="text-6xl mb-4">📅</div>
@@ -197,7 +204,7 @@ export default function DashboardPage() {
 
   return (
     <>
-      <Header currentCarbDay={todayData.carbDayType} dayNumber={todayData.dayNumber} />
+      <Header currentCarbDay={todayData.carbDayType} dayNumber={todayData.dayNumber} showLogout />
 
       <PageContainer className="pt-16 pb-24">
         {/* Top: Date + Badge + Nutrition Rings */}
@@ -356,6 +363,48 @@ export default function DashboardPage() {
             </div>
           </Card>
         </Link>
+
+        {/* 橄榄油摄入状态 - 仅在低碳日和中碳日显示 */}
+        {references && references.oliveOilMl > 0 && (
+          <Card className="mt-3 !py-3 !px-4">
+            {(() => {
+              const totalOliveOil = (intake.lunchOliveOilMl || 0) + (intake.dinnerOliveOilMl || 0);
+              const target = references.oliveOilMl;
+              const isComplete = totalOliveOil >= target;
+              const percentage = Math.min(100, Math.round((totalOliveOil / target) * 100));
+
+              return (
+                <div className="flex items-center gap-3">
+                  <span className="text-lg">🫒</span>
+                  <div className="flex-1">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-sm font-medium text-[#2C3E50]">橄榄油</span>
+                      <span className={`text-sm font-medium ${isComplete ? 'text-[#27AE60]' : 'text-[#F59E0B]'}`}>
+                        {totalOliveOil} / {target} ml
+                      </span>
+                    </div>
+                    <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
+                      <div
+                        className={`h-full rounded-full transition-all ${isComplete ? 'bg-[#27AE60]' : 'bg-[#F59E0B]'}`}
+                        style={{ width: `${percentage}%` }}
+                      />
+                    </div>
+                    <div className="flex justify-between mt-1 text-xs text-[#5D6D7E]">
+                      <span>午餐 {intake.lunchOliveOilMl || 0}ml</span>
+                      <span>晚餐 {intake.dinnerOliveOilMl || 0}ml</span>
+                    </div>
+                  </div>
+                  {isComplete ? (
+                    <span className="text-[#27AE60] text-sm">✓</span>
+                  ) : (
+                    <span className="text-[#F59E0B] text-xs">还需 {target - totalOliveOil}ml</span>
+                  )}
+                </div>
+              );
+            })()}
+          </Card>
+        )}
+
       </PageContainer>
 
       <BottomNav />

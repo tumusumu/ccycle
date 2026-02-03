@@ -10,6 +10,7 @@ datasource db {
 model User {
   id                String           @id @default(cuid())
   username          String           @unique
+  password          String           // 新增：存储加密后的密码
   birthYear         Int
   gender            Gender
   height            Float?           // cm - for BMI calculation
@@ -124,9 +125,17 @@ model DailyIntakeRecord {
   actualDinnerRiceGrams Float?
   actualDinnerMeatType  String?
   actualDinnerMeatGrams Float?
+  // Olive Oil (脂肪来源)
+  actualLunchOliveOilMl  Float?
+  actualDinnerOliveOilMl Float?
   // Exercise
   actualStrengthMinutes Int?
   actualCardioMinutes   Int?
+
+  // 第一个月饮食禁忌打卡
+  noFruitConfirmed      Boolean   @default(false)  // 没有吃水果
+  noSugarConfirmed      Boolean   @default(false)  // 没有吃糖
+  noWhiteFlourConfirmed Boolean   @default(false)  // 没有吃白面
 
   createdAt           DateTime      @default(now())
   updatedAt           DateTime      @updatedAt

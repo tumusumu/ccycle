@@ -19,6 +19,7 @@ interface IActualIntakeInput {
   lunchRiceGrams?: number;
   lunchMeatType?: string;
   lunchMeatGrams?: number;
+  lunchOliveOilMl?: number;
   lunchCompleted?: boolean;
   // Snack
   snackRiceGrams?: number;
@@ -29,6 +30,7 @@ interface IActualIntakeInput {
   dinnerRiceGrams?: number;
   dinnerMeatType?: string;
   dinnerMeatGrams?: number;
+  dinnerOliveOilMl?: number;
   dinnerCompleted?: boolean;
   // Exercise
   strengthMinutes?: number;
@@ -42,10 +44,12 @@ export async function GET() {
     const user = await getCurrentUser();
 
     if (!user) {
-      return NextResponse.json(
-        { error: 'User not found', code: 'NO_USER' },
-        { status: 404 }
-      );
+      return NextResponse.json({
+        ok: false,
+        code: 'NO_USER',
+        dailyMealPlanId: null,
+        intake: null,
+      });
     }
 
     // Get active plan
@@ -57,10 +61,12 @@ export async function GET() {
     });
 
     if (!plan) {
-      return NextResponse.json(
-        { error: 'No active plan found', code: 'NO_PLAN' },
-        { status: 404 }
-      );
+      return NextResponse.json({
+        ok: false,
+        code: 'NO_PLAN',
+        dailyMealPlanId: null,
+        intake: null,
+      });
     }
 
     const today = getToday();
@@ -77,10 +83,12 @@ export async function GET() {
     });
 
     if (!mealPlan) {
-      return NextResponse.json(
-        { error: 'No meal plan found for today', code: 'NO_MEAL_PLAN' },
-        { status: 404 }
-      );
+      return NextResponse.json({
+        ok: false,
+        code: 'NO_MEAL_PLAN',
+        dailyMealPlanId: null,
+        intake: null,
+      });
     }
 
     // Get exercise record for today
@@ -97,6 +105,7 @@ export async function GET() {
     const intake = mealPlan.intakeRecord;
 
     return NextResponse.json({
+      ok: true,
       dailyMealPlanId: mealPlan.id,
       carbDayType: mealPlan.carbDayType,
       intake: intake ? {
@@ -109,6 +118,7 @@ export async function GET() {
         lunchRiceGrams: intake.actualLunchRiceGrams ?? 0,
         lunchMeatType: intake.actualLunchMeatType ?? '',
         lunchMeatGrams: intake.actualLunchMeatGrams ?? 0,
+        lunchOliveOilMl: intake.actualLunchOliveOilMl ?? 0,
         lunchCompleted: intake.riceLunchCompleted && intake.protein2Completed,
         // Snack
         snackRiceGrams: intake.actualSnackRiceGrams ?? 0,
@@ -119,6 +129,7 @@ export async function GET() {
         dinnerRiceGrams: intake.actualDinnerRiceGrams ?? 0,
         dinnerMeatType: intake.actualDinnerMeatType ?? '',
         dinnerMeatGrams: intake.actualDinnerMeatGrams ?? 0,
+        dinnerOliveOilMl: intake.actualDinnerOliveOilMl ?? 0,
         dinnerCompleted: intake.riceDinnerCompleted && intake.protein4Completed,
         // Exercise
         strengthMinutes: exerciseRecord?.strengthCompleted ? (intake.actualStrengthMinutes ?? 0) : 0,
@@ -211,6 +222,9 @@ export async function PUT(request: NextRequest) {
     if (body.lunchMeatGrams !== undefined) {
       intakeUpdateData.actualLunchMeatGrams = body.lunchMeatGrams;
     }
+    if (body.lunchOliveOilMl !== undefined) {
+      intakeUpdateData.actualLunchOliveOilMl = body.lunchOliveOilMl;
+    }
     if (body.lunchCompleted !== undefined) {
       intakeUpdateData.riceLunchCompleted = body.lunchCompleted;
       intakeUpdateData.protein2Completed = body.lunchCompleted;
@@ -239,6 +253,9 @@ export async function PUT(request: NextRequest) {
     }
     if (body.dinnerMeatGrams !== undefined) {
       intakeUpdateData.actualDinnerMeatGrams = body.dinnerMeatGrams;
+    }
+    if (body.dinnerOliveOilMl !== undefined) {
+      intakeUpdateData.actualDinnerOliveOilMl = body.dinnerOliveOilMl;
     }
     if (body.dinnerCompleted !== undefined) {
       intakeUpdateData.riceDinnerCompleted = body.dinnerCompleted;

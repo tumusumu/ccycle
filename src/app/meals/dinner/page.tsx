@@ -30,6 +30,7 @@ export default function DinnerPage() {
   const [riceGrams, setRiceGrams] = useState(0);
   const [meatType, setMeatType] = useState('');
   const [meatGrams, setMeatGrams] = useState(0);
+  const [oliveOilMl, setOliveOilMl] = useState(0);
 
   // Nutrition search state
   const [showSearch, setShowSearch] = useState(false);
@@ -61,13 +62,18 @@ export default function DinnerPage() {
         setRiceGrams(intake.dinnerRiceGrams);
         setMeatType(intake.dinnerMeatType);
         setMeatGrams(intake.dinnerMeatGrams);
+        setOliveOilMl(intake.dinnerOliveOilMl);
       } else {
         setRiceGrams(refs.dinnerRice);
         setMeatType('chicken'); // default to chicken
         setMeatGrams(refs.dinnerMeat);
+        // 晚餐建议分配剩余的橄榄油（午餐已摄入的部分减去）
+        const lunchOil = intake.lunchOliveOilMl || 0;
+        const remaining = Math.max(0, refs.oliveOilMl - lunchOil);
+        setOliveOilMl(remaining);
       }
     }
-  }, [isLoading, carbDayType, intake.dinnerCompleted, intake.dinnerRiceGrams, intake.dinnerMeatType, intake.dinnerMeatGrams]);
+  }, [isLoading, carbDayType, intake.dinnerCompleted, intake.dinnerRiceGrams, intake.dinnerMeatType, intake.dinnerMeatGrams, intake.dinnerOliveOilMl, intake.lunchOliveOilMl]);
 
   // Handle nutrition search selection
   const handleNutritionSelect = (result: INutritionResult) => {
@@ -100,6 +106,7 @@ export default function DinnerPage() {
       dinnerRiceGrams: riceGrams,
       dinnerMeatType: customFood ? `custom:${customFood.name}` : meatType,
       dinnerMeatGrams: meatGrams,
+      dinnerOliveOilMl: oliveOilMl,
       dinnerCompleted: true,
     });
     setIsSaving(false);
@@ -218,6 +225,74 @@ export default function DinnerPage() {
             </div>
           )}
         </Card>
+
+        {/* Olive Oil Section - 仅在低碳日和中碳日显示 */}
+        {refs.oliveOilMl > 0 && (
+          <Card className="mt-4 !p-4 bg-[#FFFBEB] border-[#F59E0B]/30">
+            <div className="mb-4">
+              <div className="flex items-center gap-2">
+                <span className="text-lg">🫒</span>
+                <label className="text-sm font-medium text-[#2C3E50]">脂肪来源</label>
+                <span className="text-xs text-[#F59E0B] bg-[#FEF3C7] px-2 py-0.5 rounded-full">
+                  {carbDayType === 'LOW' ? '低碳日需补充' : '中碳日适量添加'}
+                </span>
+              </div>
+              {(() => {
+                const lunchOil = intake.lunchOliveOilMl || 0;
+                const remaining = Math.max(0, refs.oliveOilMl - lunchOil);
+                return (
+                  <p className="text-xs text-[#5D6D7E] mt-1">
+                    今日总需 {refs.oliveOilMl}ml，午餐已摄入 {lunchOil}ml，
+                    <span className={remaining > 0 ? 'text-[#F59E0B] font-medium' : 'text-[#27AE60]'}>
+                      {remaining > 0 ? `还需 ${remaining}ml` : '已达标'}
+                    </span>
+                  </p>
+                );
+              })()}
+            </div>
+
+            <div className="flex items-center gap-2 mb-3">
+              <span className="text-sm text-[#5D6D7E] w-16">橄榄油</span>
+              <input
+                type="number"
+                value={oliveOilMl || ''}
+                onChange={(e) => setOliveOilMl(Number(e.target.value) || 0)}
+                className="flex-1 px-4 py-3 border border-[#CCCCCC] rounded-lg text-center text-lg"
+                placeholder="0"
+                min={0}
+                max={50}
+              />
+              <span className="text-sm text-[#5D6D7E]">ml</span>
+            </div>
+
+            {/* 快捷按钮 */}
+            {(() => {
+              const lunchOil = intake.lunchOliveOilMl || 0;
+              const remaining = Math.max(0, refs.oliveOilMl - lunchOil);
+              const options = [10, 15, 20, 25];
+              return (
+                <div className="flex gap-2">
+                  {options.map((ml) => (
+                    <button
+                      key={ml}
+                      type="button"
+                      onClick={() => setOliveOilMl(ml)}
+                      className={`flex-1 py-2 text-sm rounded-lg transition-colors ${
+                        oliveOilMl === ml
+                          ? 'bg-[#F59E0B] text-white'
+                          : ml === remaining
+                          ? 'bg-[#FEF3C7] text-[#92400E] border border-[#F59E0B]'
+                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      }`}
+                    >
+                      {ml}ml{ml === remaining && ' ⭐'}
+                    </button>
+                  ))}
+                </div>
+              );
+            })()}
+          </Card>
+        )}
       </div>
 
       {/* Nutrition Search Modal */}
