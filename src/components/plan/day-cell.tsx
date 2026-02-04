@@ -67,21 +67,35 @@ export function DayCell({
     statusText = <span className="text-[10px] font-medium">未记录</span>;
   } else if (status === 'completed') {
     if (isOnTarget) {
-      // Completed + On target
+      // Completed + On target (营养达标)
       containerClass += ' bg-gradient-to-b from-[#5CB85C] to-[#4A9D4A] text-white';
       iconContent = <span className="text-sm">✓</span>;
       statusText = <span className="text-[10px] font-medium">达标</span>;
     } else {
-      // Completed + Over target
-      containerClass += ' bg-[#F5C542] text-white';
+      // Completed + Over target (营养超标)
+      containerClass += ' bg-gradient-to-b from-[#FF9800] to-[#F57C00] text-white';
       iconContent = <span className="text-sm">⚠</span>;
       statusText = <span className="text-[10px] font-medium">超标</span>;
     }
   } else if (status === 'today') {
     // Today - in progress
-    containerClass += ` ${carbStyle.bgActive} border-2 border-[#4A90D9]`;
-    iconContent = <span className="text-[10px] font-medium text-[#4A90D9]">进行中</span>;
-    statusText = <span className="text-[10px] text-[#4A90D9]">{completionPercent}%</span>;
+    if (completionPercent === 100) {
+      // 今日已完成所有任务，根据营养摄入判断
+      if (isOnTarget) {
+        containerClass += ' bg-gradient-to-b from-[#5CB85C] to-[#4A9D4A] text-white';
+        iconContent = <span className="text-sm">✓</span>;
+        statusText = <span className="text-[10px] font-medium">达标</span>;
+      } else {
+        containerClass += ' bg-gradient-to-b from-[#FF9800] to-[#F57C00] text-white';
+        iconContent = <span className="text-sm">⚠</span>;
+        statusText = <span className="text-[10px] font-medium">超标</span>;
+      }
+    } else {
+      // 今日进行中
+      containerClass += ` ${carbStyle.bgActive} border-2 border-[#4A90D9]`;
+      iconContent = <span className="text-[10px] font-medium text-[#4A90D9]">进行中</span>;
+      statusText = <span className="text-[10px] text-[#4A90D9]">{completionPercent}%</span>;
+    }
   } else {
     // Future - show carb type color (lighter shade)
     containerClass += ` ${carbStyle.bgInactive} ${carbStyle.textMuted}`;

@@ -18,13 +18,13 @@ import {
 } from '@/utils/carbon-cycle';
 import { formatDate, formatDateFromDb, getToday, getTodayString, addDays, getDaysBetween, parseDate } from '@/utils/date';
 import { TCarbDayType } from '@/types/plan';
-import { useIntake, IMealIntake } from '@/context/intake-context';
 import {
   calculateTargets,
   calculateDailyNutrition,
   intakeToMealsData,
   IUserData,
 } from '@/lib/nutrition-calculator';
+import { useIntake, IMealIntake } from '@/context/intake-context';
 import { SugarControlChallenge } from '@/components/sugar-control-challenge';
 
 interface DailyPlan {
@@ -215,8 +215,20 @@ export default function PlanPage() {
 
       // Get completion data - for today use context, for other days use database
       let completionCount = 0;
+      let isOnTarget = true; // 默认达标
+      
       if (dateStr === todayStr) {
         completionCount = todayCompleted;
+        // 今日：基于 context 中的营养数据判断是否超标
+        if (userData) {
+          const targets = calculateTargets({ weight: userData.weight, bodyFatPercentage: userData.bodyFatPercentage }, carbDayType);
+          const mealsData = intakeToMealsData(intake);
+          const nutrition = calculateDailyNutrition(mealsData);
+          // 只要有任何一项超标，就认为超标
+          isOnTarget = nutrition.carbs <= targets.carbs && 
+                      nutrition.protein <= targets.protein && 
+                      nutrition.fat <= targets.fat;
+        }
       } else {
         // Find the dailyMealPlan for this date from the plan data
         const dailyMealPlan = plan.dailyMealPlans?.find((mp: any) => {
@@ -226,8 +238,33 @@ export default function PlanPage() {
             : formatDateFromDb(new Date(mp.date));
           return mpDateStr === dateStr;
         });
+        
         if (dailyMealPlan?.intakeRecord) {
           completionCount = getCompletionCountFromRecord(dailyMealPlan.intakeRecord);
+          
+          // 历史日期：基于数据库中的营养数据判断是否超标
+          if (userData && completionCount > 0) {
+            const targets = calculateTargets({ weight: userData.weight, bodyFatPercentage: userData.bodyFatPercentage }, carbDayType);
+            const record = dailyMealPlan.intakeRecord;
+            
+            // 简化计算：直接从数据库记录估算营养摄入
+            const carbsFromOats = (record.actualOatmealGrams ?? 0) * 0.66;  // 燕麦66%碳水
+            const carbsFromRice = ((record.actualLunchRiceGrams ?? 0) + (record.actualSnackRiceGrams ?? 0) + (record.actualDinnerRiceGrams ?? 0)) * 0.28; // 米饭28%碳水
+            const actualCarbs = carbsFromOats + carbsFromRice;
+            
+            const proteinFromEggs = ((record.actualWholeEggs ?? 0) * 6) + ((record.actualWhiteOnlyEggs ?? 0) * 3.6);
+            const proteinFromMeat = ((record.actualLunchMeatGrams ?? 0) + (record.actualDinnerMeatGrams ?? 0) + (record.actualSnackProteinGrams ?? 0)) * 0.2; // 平均20%蛋白质
+            const actualProtein = proteinFromEggs + proteinFromMeat;
+            
+            const fatFromEggs = (record.actualWholeEggs ?? 0) * 5;
+            const fatFromOil = ((record.actualLunchOliveOilMl ?? 0) + (record.actualDinnerOliveOilMl ?? 0)) * 0.92; // 橄榄油约92%脂肪
+            const actualFat = fatFromEggs + fatFromOil;
+            
+            // 判断是否超标（允许5%的误差范围）
+            isOnTarget = actualCarbs <= targets.carbs * 1.05 && 
+                        actualProtein <= targets.protein * 1.05 && 
+                        actualFat <= targets.fat * 1.05;
+          }
         }
       }
       const completionPercent = Math.round((completionCount / 6) * 100);
@@ -245,9 +282,6 @@ export default function PlanPage() {
           status = 'completed';
         }
       }
-
-      // Determine if on target (simplified: if completed 6/6)
-      const isOnTarget = completionCount === 6;
 
       result.push({
         date,

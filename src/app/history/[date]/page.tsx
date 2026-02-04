@@ -429,13 +429,14 @@ export default function HistoryIntakePage() {
 
         {/* 控糖打卡 */}
         <Card className="mt-6">
-          <h3 className="text-base font-semibold text-[var(--color-title)] mb-4 flex items-center gap-2">
+          <h3 className="text-base font-semibold text-[var(--color-title)] mb-2 flex items-center gap-2">
             <span>🎯</span> 控糖打卡
           </h3>
+          <p className="text-xs text-[var(--color-body)] mb-4">点击下方按钮确认今日控糖情况</p>
           <div className="space-y-3">
             {/* 没有吃水果 */}
             <div 
-              className="flex items-center justify-between p-3 bg-[var(--background)] rounded-lg cursor-pointer hover:bg-[var(--color-hover)] transition-colors"
+              className="flex items-center justify-between p-3 bg-[var(--background)] rounded-lg cursor-pointer hover:bg-[var(--color-hover)] transition-all active:scale-98"
               onClick={() => {
                 const newValue = !noFruit;
                 setNoFruit(newValue);
@@ -444,20 +445,29 @@ export default function HistoryIntakePage() {
             >
               <div className="flex items-center gap-3">
                 <span className="text-xl">🍎</span>
-                <span className="text-sm text-[var(--color-body)]">没有吃水果</span>
+                <div>
+                  <div className="text-sm font-medium text-[var(--color-title)]">没有吃水果</div>
+                  <div className="text-xs text-[var(--color-placeholder)]">
+                    {noFruit ? '已确认' : '点击打卡'}
+                  </div>
+                </div>
               </div>
-              <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors ${
+              <div className={`w-7 h-7 rounded-full border-2 flex items-center justify-center transition-all ${
                 noFruit 
-                  ? 'border-[#27AE60] bg-[#27AE60]' 
-                  : 'border-[var(--color-placeholder)]'
+                  ? 'border-[#27AE60] bg-[#27AE60] scale-110' 
+                  : 'border-[var(--color-placeholder)] bg-white'
               }`}>
-                {noFruit && <span className="text-white text-sm">✓</span>}
+                {noFruit ? (
+                  <span className="text-white text-base font-bold">✓</span>
+                ) : (
+                  <span className="text-[var(--color-placeholder)] text-xs">?</span>
+                )}
               </div>
             </div>
 
             {/* 没有吃糖 */}
             <div 
-              className="flex items-center justify-between p-3 bg-[var(--background)] rounded-lg cursor-pointer hover:bg-[var(--color-hover)] transition-colors"
+              className="flex items-center justify-between p-3 bg-[var(--background)] rounded-lg cursor-pointer hover:bg-[var(--color-hover)] transition-all active:scale-98"
               onClick={() => {
                 const newValue = !noSugar;
                 setNoSugar(newValue);
@@ -466,20 +476,29 @@ export default function HistoryIntakePage() {
             >
               <div className="flex items-center gap-3">
                 <span className="text-xl">🍬</span>
-                <span className="text-sm text-[var(--color-body)]">没有吃糖</span>
+                <div>
+                  <div className="text-sm font-medium text-[var(--color-title)]">没有吃糖</div>
+                  <div className="text-xs text-[var(--color-placeholder)]">
+                    {noSugar ? '已确认' : '点击打卡'}
+                  </div>
+                </div>
               </div>
-              <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors ${
+              <div className={`w-7 h-7 rounded-full border-2 flex items-center justify-center transition-all ${
                 noSugar 
-                  ? 'border-[#27AE60] bg-[#27AE60]' 
-                  : 'border-[var(--color-placeholder)]'
+                  ? 'border-[#27AE60] bg-[#27AE60] scale-110' 
+                  : 'border-[var(--color-placeholder)] bg-white'
               }`}>
-                {noSugar && <span className="text-white text-sm">✓</span>}
+                {noSugar ? (
+                  <span className="text-white text-base font-bold">✓</span>
+                ) : (
+                  <span className="text-[var(--color-placeholder)] text-xs">?</span>
+                )}
               </div>
             </div>
 
             {/* 没有吃白面 */}
             <div 
-              className="flex items-center justify-between p-3 bg-[var(--background)] rounded-lg cursor-pointer hover:bg-[var(--color-hover)] transition-colors"
+              className="flex items-center justify-between p-3 bg-[var(--background)] rounded-lg cursor-pointer hover:bg-[var(--color-hover)] transition-all active:scale-98"
               onClick={() => {
                 const newValue = !noWhiteFlour;
                 setNoWhiteFlour(newValue);
@@ -488,15 +507,34 @@ export default function HistoryIntakePage() {
             >
               <div className="flex items-center gap-3">
                 <span className="text-xl">🍞</span>
-                <span className="text-sm text-[var(--color-body)]">没有吃白面</span>
+                <div>
+                  <div className="text-sm font-medium text-[var(--color-title)]">没有吃白面</div>
+                  <div className="text-xs text-[var(--color-placeholder)]">
+                    {noWhiteFlour ? '已确认' : '点击打卡'}
+                  </div>
+                </div>
               </div>
-              <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors ${
+              <div className={`w-7 h-7 rounded-full border-2 flex items-center justify-center transition-all ${
                 noWhiteFlour 
-                  ? 'border-[#27AE60] bg-[#27AE60]' 
-                  : 'border-[var(--color-placeholder)]'
+                  ? 'border-[#27AE60] bg-[#27AE60] scale-110' 
+                  : 'border-[var(--color-placeholder)] bg-white'
               }`}>
-                {noWhiteFlour && <span className="text-white text-sm">✓</span>}
+                {noWhiteFlour ? (
+                  <span className="text-white text-base font-bold">✓</span>
+                ) : (
+                  <span className="text-[var(--color-placeholder)] text-xs">?</span>
+                )}
               </div>
+            </div>
+          </div>
+          
+          {/* 打卡统计 */}
+          <div className="mt-4 pt-4 border-t border-[var(--color-border)]">
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-[var(--color-body)]">控糖完成度</span>
+              <span className="font-semibold text-[var(--color-title)]">
+                {[noFruit, noSugar, noWhiteFlour].filter(Boolean).length}/3
+              </span>
             </div>
           </div>
           <p className="text-xs text-[var(--color-placeholder)] mt-3">
