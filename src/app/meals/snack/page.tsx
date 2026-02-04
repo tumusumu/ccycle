@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
+import { Suspense, useState, useEffect, useCallback } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useIntake } from '@/context/intake-context';
@@ -19,8 +19,10 @@ interface ICustomFood {
   calories: number;
 }
 
-export default function SnackPage() {
+function SnackContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const targetDate = searchParams.get('date'); // 获取URL参数中的日期
   const { intake, saveToDatabase } = useIntake();
   const [isSaving, setIsSaving] = useState(false);
   const [carbDayType, setCarbDayType] = useState<TCarbDayType>('LOW');
@@ -104,14 +106,41 @@ export default function SnackPage() {
 
   const handleSubmit = async () => {
     setIsSaving(true);
-    await saveToDatabase({
-      snackRiceGrams: riceGrams,
-      snackMeatType: customFood ? `custom:${customFood.name}` : proteinType,
-      snackMeatGrams: proteinGrams,
-      snackCompleted: true,
-    });
+    
+    if (targetDate) {
+      // 保存历史日期数据
+      try {
+        const response = await fetch(`/api/intake-history/${targetDate}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            snackRiceGrams: riceGrams,
+            snackMeatType: customFood ? `custom:${customFood.name}` : proteinType,
+            snackMeatGrams: proteinGrams,
+            snackCompleted: true,
+          }),
+        });
+        
+        if (response.ok) {
+          // 返回到历史记录页面，添加刷新参数
+          router.push(`/history/${targetDate}?refresh=${Date.now()}`);
+        } else {
+          console.error('保存失败:', await response.text());
+        }
+      } catch (err) {
+        console.error('保存失败:', err);
+      }
+    } else {
+      // 保存今日数据
+      await saveToDatabase({
+        snackRiceGrams: riceGrams,
+        snackMeatType: customFood ? `custom:${customFood.name}` : proteinType,
+        snackMeatGrams: proteinGrams,
+        snackCompleted: true,
+      });
+      router.push('/dashboard');
+    }
     setIsSaving(false);
-    router.push('/dashboard');
   };
 
   const refs = getReferencePortions(carbDayType);
@@ -272,5 +301,17 @@ export default function SnackPage() {
         </Button>
       </div>
     </div>
+  );
+}
+
+export default function SnackPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-[#EEF2F7] flex items-center justify-center">
+        <div className="text-[#5D6D7E]">加载中...</div>
+      </div>
+    }>
+      <SnackContent />
+    </Suspense>
   );
 }

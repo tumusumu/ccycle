@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
-import { useRouter, useParams } from 'next/navigation';
+import { Suspense, useState, useEffect, useCallback, useMemo } from 'react';
+import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import { Header } from '@/components/layout/header';
 import { PageContainer } from '@/components/layout/page-container';
 import { Card } from '@/components/ui/card';
@@ -49,10 +49,12 @@ const defaultIntake: IMealIntake = {
   cardioCompleted: false,
 };
 
-export default function HistoryIntakePage() {
+function HistoryIntakeContent() {
   const router = useRouter();
   const params = useParams();
+  const searchParams = useSearchParams();
   const targetDate = params.date as string; // YYYY-MM-DD
+  const refreshParam = searchParams.get('refresh'); // 用于触发刷新
   
   const [userData, setUserData] = useState<IUserData | null>(null);
   const [carbDayType, setCarbDayType] = useState<TCarbDayType>('LOW');
@@ -129,6 +131,20 @@ export default function HistoryIntakePage() {
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  // 监听 refresh 参数变化，当从餐食页面返回时重新加载数据
+  useEffect(() => {
+    if (refreshParam) {
+      loadData();
+    }
+  }, [refreshParam, loadData]);
+
+  // 监听 refresh 参数变化，当从餐食页面返回时重新加载数据
+  useEffect(() => {
+    if (refreshParam) {
+      loadData();
+    }
+  }, [refreshParam, loadData]);
 
   // 保存到localStorage和数据库
   const saveIntake = useCallback(async (updates: Partial<IMealIntake>) => {
@@ -295,7 +311,7 @@ export default function HistoryIntakePage() {
                 {intake.breakfastCompleted ? (
                   <Badge variant="low">✓ 已完成</Badge>
                 ) : (
-                  <span className="text-sm text-[var(--color-placeholder)]">未完成</span>
+                  <span className="text-sm text-[#F5C542] font-medium">📝 补录</span>
                 )}
                 <span className="text-[var(--color-placeholder)]">→</span>
               </div>
@@ -319,7 +335,7 @@ export default function HistoryIntakePage() {
                 {intake.lunchCompleted ? (
                   <Badge variant="low">✓ 已完成</Badge>
                 ) : (
-                  <span className="text-sm text-[var(--color-placeholder)]">未完成</span>
+                  <span className="text-sm text-[#F5C542] font-medium">📝 补录</span>
                 )}
                 <span className="text-[var(--color-placeholder)]">→</span>
               </div>
@@ -343,7 +359,7 @@ export default function HistoryIntakePage() {
                 {intake.snackCompleted ? (
                   <Badge variant="low">✓ 已完成</Badge>
                 ) : (
-                  <span className="text-sm text-[var(--color-placeholder)]">未完成</span>
+                  <span className="text-sm text-[#F5C542] font-medium">📝 补录</span>
                 )}
                 <span className="text-[var(--color-placeholder)]">→</span>
               </div>
@@ -367,7 +383,7 @@ export default function HistoryIntakePage() {
                 {intake.dinnerCompleted ? (
                   <Badge variant="low">✓ 已完成</Badge>
                 ) : (
-                  <span className="text-sm text-[var(--color-placeholder)]">未完成</span>
+                  <span className="text-sm text-[#F5C542] font-medium">📝 补录</span>
                 )}
                 <span className="text-[var(--color-placeholder)]">→</span>
               </div>
@@ -393,7 +409,7 @@ export default function HistoryIntakePage() {
                 {intake.strengthCompleted ? (
                   <Badge variant="low">✓ 已完成</Badge>
                 ) : (
-                  <span className="text-sm text-[var(--color-placeholder)]">未完成</span>
+                  <span className="text-sm text-[#F5C542] font-medium">📝 补录</span>
                 )}
                 <span className="text-[var(--color-placeholder)]">→</span>
               </div>
@@ -419,7 +435,7 @@ export default function HistoryIntakePage() {
                 {intake.cardioCompleted ? (
                   <Badge variant="low">✓ 已完成</Badge>
                 ) : (
-                  <span className="text-sm text-[var(--color-placeholder)]">未完成</span>
+                  <span className="text-sm text-[#F5C542] font-medium">📝 补录</span>
                 )}
                 <span className="text-[var(--color-placeholder)]">→</span>
               </div>
@@ -559,5 +575,17 @@ export default function HistoryIntakePage() {
         </Button>
       </PageContainer>
     </>
+  );
+}
+
+export default function HistoryIntakePage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-[#EEF2F7] flex items-center justify-center">
+        <div className="text-[#5D6D7E]">加载中...</div>
+      </div>
+    }>
+      <HistoryIntakeContent />
+    </Suspense>
   );
 }

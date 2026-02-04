@@ -62,7 +62,7 @@ function BreakfastContent() {
     if (targetDate) {
       // 保存历史日期数据
       try {
-        await fetch(`/api/intake-history/${targetDate}`, {
+        const response = await fetch(`/api/intake-history/${targetDate}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -72,8 +72,13 @@ function BreakfastContent() {
             breakfastCompleted: true,
           }),
         });
-        // 返回到历史记录页面
-        router.push(`/history/${targetDate}`);
+        
+        if (response.ok) {
+          // 保存成功后，添加时间戳参数强制刷新历史页面
+          router.push(`/history/${targetDate}?refresh=${Date.now()}`);
+        } else {
+          console.error('保存失败:', await response.text());
+        }
       } catch (err) {
         console.error('保存失败:', err);
       }
