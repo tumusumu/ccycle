@@ -10,8 +10,9 @@ export async function POST() {
   try {
     const cookieStore = await cookies();
 
-    // Clear the user ID cookie
-    cookieStore.delete('ccycle_user_id');
+    // Clear both user ID cookies
+    cookieStore.delete('ccycle_user_id');          // httpOnly cookie
+    cookieStore.delete('ccycle_user_id_client');   // client-readable cookie
 
     return NextResponse.json({ success: true });
   } catch (error) {

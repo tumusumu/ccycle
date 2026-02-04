@@ -31,6 +31,34 @@ interface DailyPlan {
   date: string;
   dayNumber: number;
   carbDayType: TCarbDayType;
+  intakeRecord?: {
+    actualOatmealGrams?: number;
+    actualWholeEggs?: number;
+    actualWhiteOnlyEggs?: number;
+    actualLunchRiceGrams?: number;
+    actualLunchMeatType?: string;
+    actualLunchMeatGrams?: number;
+    actualLunchOliveOilMl?: number;
+    actualSnackRiceGrams?: number;
+    actualSnackProteinType?: string;
+    actualSnackProteinGrams?: number;
+    actualDinnerRiceGrams?: number;
+    actualDinnerMeatType?: string;
+    actualDinnerMeatGrams?: number;
+    actualDinnerOliveOilMl?: number;
+    actualStrengthMinutes?: number;
+    actualCardioMinutes?: number;
+    oatmealCompleted?: boolean;
+    riceLunchCompleted?: boolean;
+    riceDinnerCompleted?: boolean;
+    protein1Completed?: boolean;
+    protein2Completed?: boolean;
+    protein3Completed?: boolean;
+    protein4Completed?: boolean;
+    noFruitConfirmed?: boolean;
+    noSugarConfirmed?: boolean;
+    noWhiteFlourConfirmed?: boolean;
+  };
 }
 
 interface PlanData {
@@ -49,25 +77,31 @@ interface UserData {
   bodyFatPercentage: number;
 }
 
-// Get intake data from localStorage for a specific date
-function getIntakeForDate(dateStr: string, visitorId: string): IMealIntake | null {
-  if (typeof window === 'undefined') return null;
-  try {
-    const key = `intake-${visitorId}-${dateStr}`;
-    const stored = localStorage.getItem(key);
-    if (!stored) {
-      // Try legacy key without userId
-      const legacyStored = localStorage.getItem(`intake-${dateStr}`);
-      if (legacyStored) return JSON.parse(legacyStored);
-      return null;
-    }
-    return JSON.parse(stored);
-  } catch {
-    return null;
-  }
+// Calculate completion count from DailyIntakeRecord (from database)
+function getCompletionCountFromRecord(record: any): number {
+  if (!record) return 0;
+  
+  // Check completion flags in database
+  const breakfastCompleted = record.oatmealCompleted && record.protein1Completed;
+  const lunchCompleted = record.riceLunchCompleted && record.protein2Completed;
+  const snackCompleted = record.protein3Completed;
+  const dinnerCompleted = record.riceDinnerCompleted && record.protein4Completed;
+  
+  // Check exercise completion (need to check actualXXXMinutes > 0)
+  const strengthCompleted = (record.actualStrengthMinutes ?? 0) > 0;
+  const cardioCompleted = (record.actualCardioMinutes ?? 0) > 0;
+  
+  return [
+    breakfastCompleted,
+    lunchCompleted,
+    snackCompleted,
+    dinnerCompleted,
+    strengthCompleted,
+    cardioCompleted,
+  ].filter(Boolean).length;
 }
 
-// Calculate completion count from intake data
+// Calculate completion count from intake data (for today, from context)
 function getCompletionCount(intake: IMealIntake | null): number {
   if (!intake) return 0;
   return [
@@ -179,9 +213,23 @@ export default function PlanPage() {
       // Get carb type based on position in cycle
       const carbDayType = getCarbTypeForDate(planStart, date);
 
-      // Get completion data first
-      const storedIntake = dateStr === todayStr ? intake : getIntakeForDate(dateStr, plan.id);
-      const completionCount = dateStr === todayStr ? todayCompleted : getCompletionCount(storedIntake);
+      // Get completion data - for today use context, for other days use database
+      let completionCount = 0;
+      if (dateStr === todayStr) {
+        completionCount = todayCompleted;
+      } else {
+        // Find the dailyMealPlan for this date from the plan data
+        const dailyMealPlan = plan.dailyMealPlans?.find((mp: any) => {
+          // mp.date might be a string or Date object, normalize it
+          const mpDateStr = typeof mp.date === 'string' 
+            ? mp.date.split('T')[0] 
+            : formatDateFromDb(new Date(mp.date));
+          return mpDateStr === dateStr;
+        });
+        if (dailyMealPlan?.intakeRecord) {
+          completionCount = getCompletionCountFromRecord(dailyMealPlan.intakeRecord);
+        }
+      }
       const completionPercent = Math.round((completionCount / 6) * 100);
 
       // Determine status - compare date strings to avoid timezone issues
@@ -259,14 +307,97 @@ export default function PlanPage() {
       dayData.carbDayType
     );
 
-    // Get intake data
-    const storedIntake = dayData.status === 'today' ? intake : getIntakeForDate(dayData.dateStr, plan?.id || '');
+    // Get intake data - for today use context, for other days use database
+    let storedIntake: IMealIntake | null = null;
+    if (dayData.status === 'today') {
+      storedIntake = intake;
+    } else {
+      // Find the dailyMealPlan for this date from the plan data
+      const dailyMealPlan = plan?.dailyMealPlans?.find((mp: any) => {
+        const mpDateStr = typeof mp.date === 'string' 
+          ? mp.date.split('T')[0] 
+          : formatDateFromDb(new Date(mp.date));
+        return mpDateStr === dayData.dateStr;
+      });
+
+      // Convert intakeRecord to IMealIntake format if exists
+      if (dailyMealPlan?.intakeRecord) {
+        const record = dailyMealPlan.intakeRecord;
+        storedIntake = {
+          oatmealGrams: record.actualOatmealGrams ?? 0,
+          wholeEggs: record.actualWholeEggs ?? 0,
+          whiteOnlyEggs: record.actualWhiteOnlyEggs ?? 0,
+          breakfastCompleted: (record.oatmealCompleted ?? false) && (record.protein1Completed ?? false),
+          lunchRiceGrams: record.actualLunchRiceGrams ?? 0,
+          lunchMeatType: record.actualLunchMeatType ?? '',
+          lunchMeatGrams: record.actualLunchMeatGrams ?? 0,
+          lunchOliveOilMl: record.actualLunchOliveOilMl ?? 0,
+          lunchCompleted: (record.riceLunchCompleted ?? false) && (record.protein2Completed ?? false),
+          snackRiceGrams: record.actualSnackRiceGrams ?? 0,
+          snackMeatType: record.actualSnackProteinType ?? '',
+          snackMeatGrams: record.actualSnackProteinGrams ?? 0,
+          snackCompleted: record.protein3Completed ?? false,
+          dinnerRiceGrams: record.actualDinnerRiceGrams ?? 0,
+          dinnerMeatType: record.actualDinnerMeatType ?? '',
+          dinnerMeatGrams: record.actualDinnerMeatGrams ?? 0,
+          dinnerOliveOilMl: record.actualDinnerOliveOilMl ?? 0,
+          dinnerCompleted: (record.riceDinnerCompleted ?? false) && (record.protein4Completed ?? false),
+          strengthMinutes: record.actualStrengthMinutes ?? 0,
+          strengthCompleted: (record.actualStrengthMinutes ?? 0) > 0,
+          cardioMinutes: record.actualCardioMinutes ?? 0,
+          cardioCompleted: (record.actualCardioMinutes ?? 0) > 0,
+        };
+      }
+    }
 
     // Calculate actual nutrition
     let nutrition = { carbs: 0, protein: 0, fat: 0, calories: 0 };
     if (storedIntake) {
-      const mealsData = intakeToMealsData(storedIntake);
+      // Convert IMealIntake to IDailyMealsData format
+      const mealsData = {
+        breakfast: {
+          oatmealGrams: storedIntake.oatmealGrams,
+          wholeEggs: storedIntake.wholeEggs,
+          whiteOnlyEggs: storedIntake.whiteOnlyEggs,
+        },
+        lunch: {
+          riceGrams: storedIntake.lunchRiceGrams,
+          meatType: storedIntake.lunchMeatType,
+          meatGrams: storedIntake.lunchMeatGrams,
+          oliveOilMl: storedIntake.lunchOliveOilMl,
+        },
+        snack: {
+          riceGrams: storedIntake.snackRiceGrams,
+          meatType: storedIntake.snackMeatType,
+          meatGrams: storedIntake.snackMeatGrams,
+        },
+        dinner: {
+          riceGrams: storedIntake.dinnerRiceGrams,
+          meatType: storedIntake.dinnerMeatType,
+          meatGrams: storedIntake.dinnerMeatGrams,
+          oliveOilMl: storedIntake.dinnerOliveOilMl,
+        },
+      };
       nutrition = calculateDailyNutrition(mealsData);
+    }
+
+    // Get diet restrictions from database record
+    let dietRestrictions = undefined;
+    if (dayData.status !== 'today') {
+      const dailyMealPlan = plan?.dailyMealPlans?.find((mp: any) => {
+        const mpDateStr = typeof mp.date === 'string' 
+          ? mp.date.split('T')[0] 
+          : formatDateFromDb(new Date(mp.date));
+        return mpDateStr === dayData.dateStr;
+      });
+      if (dailyMealPlan?.intakeRecord) {
+        const record = dailyMealPlan.intakeRecord;
+        dietRestrictions = {
+          noFruit: record.noFruitConfirmed ?? false,
+          noSugar: record.noSugarConfirmed ?? false,
+          noWhiteFlour: record.noWhiteFlourConfirmed ?? false,
+        };
+      }
     }
 
     setSelectedDay({
@@ -282,6 +413,8 @@ export default function PlanPage() {
         strengthMinutes: storedIntake.strengthMinutes,
         cardioMinutes: storedIntake.cardioMinutes,
       } : undefined,
+      dietRestrictions,
+      hasNoData: dayData.status === 'no-data', // 标记是否需要补充录入
     });
   };
 

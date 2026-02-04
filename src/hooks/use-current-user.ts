@@ -3,27 +3,30 @@
 import { useState, useEffect, useCallback } from 'react';
 import { IUserProfile } from '@/types/user';
 
-const USER_ID_KEY = 'ccycle_user_id';
-
 /**
- * Get current user ID from localStorage (client-side)
+ * Get current user ID from cookie (client-side)
  */
 export function getCurrentUserIdClient(): string | null {
   if (typeof window === 'undefined') return null;
-  return localStorage.getItem(USER_ID_KEY);
+  
+  // 从客户端可读的 cookie 中获取 userId
+  const cookies = document.cookie.split(';');
+  for (const cookie of cookies) {
+    const [name, value] = cookie.trim().split('=');
+    if (name === 'ccycle_user_id_client') {
+      return value;
+    }
+  }
+  return null;
 }
 
 /**
- * Set current user ID in localStorage and cookie
+ * Set current user ID (not needed anymore - set by server)
+ * @deprecated Server sets cookies during login/register
  */
 export function setCurrentUserId(userId: string): void {
-  if (typeof window === 'undefined') return;
-
-  // Set in localStorage
-  localStorage.setItem(USER_ID_KEY, userId);
-
-  // Set cookie for server-side access (expires in 1 year)
-  document.cookie = `ccycle_user_id=${userId}; path=/; max-age=${365 * 24 * 60 * 60}; SameSite=Lax`;
+  // No longer needed - server sets cookies
+  console.warn('setCurrentUserId is deprecated - cookies are set by server');
 }
 
 /**
@@ -32,8 +35,9 @@ export function setCurrentUserId(userId: string): void {
 export function clearCurrentUser(): void {
   if (typeof window === 'undefined') return;
 
-  localStorage.removeItem(USER_ID_KEY);
+  // Clear both cookies
   document.cookie = 'ccycle_user_id=; path=/; max-age=0';
+  document.cookie = 'ccycle_user_id_client=; path=/; max-age=0';
 
   // Clear all user-specific data from localStorage
   const keysToRemove: string[] = [];

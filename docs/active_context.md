@@ -1,0 +1,47 @@
+# 当前状态
+- ✅ 已完成 USDA API Key 配置并测试通过
+- ✅ 已修复 API 路由 404 问题
+- ✅ 已优化 Cursor 命令 Prompts（减少 44% Token 消耗）
+- ✅ 新功能：深色模式支持
+  - 主题 Context 和 Provider
+  - 3种模式：浅色/深色/跟随系统
+  - 深色模式 CSS 变量
+  - 主题切换组件
+  - 设置页面 (/settings)
+- ✅ 新功能：历史记录补充录入（完整版）
+  - 创建 `/history/[date]` 页面，展示6个任务
+  - 创建 `/api/intake-history/[date]` API
+  - **修复数据同步问题**：日历页面从数据库加载历史记录
+  - 修复 `/api/plan/current` 包含所有 intakeRecord
+  - 修复日期格式处理问题
+  - ✅ 完整打卡流程：日历→历史记录页→具体任务→保存→返回
+  - ✅ 数据正确持久化到数据库
+- ✅ **修复重大用户隔离问题**：
+  - 注册后自动登录（设置 httpOnly cookie）
+  - 使用双重 cookie 机制（httpOnly + 客户端可读）
+  - 客户端从 cookie 读取 userId（不再用 localStorage）
+  - 修复不同用户数据混淆问题
+  - 登出时清除所有 cookie 和 localStorage
+- ✅ **新增控糖打卡功能**：
+  - 在历史记录页面添加控糖打卡卡片（🍎🍬🍞）
+  - 三项指标：没有吃水果/没有吃糖/没有吃白面
+  - 数据同步到 DailyIntakeRecord 表
+  - 日历 Modal 显示控糖打卡状态
+  - API 支持读取和保存控糖数据
+- 📊 **数据隔离完整性验证**：
+  - 所有表正确关联到 User（直接或间接）
+  - 所有 API 使用 getCurrentUser() 验证
+  - 数据库唯一约束防止数据冲突
+  - 详见 docs/data-isolation-checklist.md
+- ✅ **生产构建成功**：
+  - 修复 Card 组件类型（添加 onClick 支持）
+  - 修复 plan/page.tsx 类型定义
+  - 修复 breakfast/page.tsx Suspense boundary
+  - 42个路由全部编译成功
+  - 无 TypeScript 错误
+- 🚀 开发服务器: http://localhost:3002
+- 🎯 **准备发布**：详见 docs/deployment-checklist.md
+- 📝 下一步：
+  1. 部署到 Vercel
+  2. 运行数据库迁移
+  3. 完善其他餐食页面的历史日期支持

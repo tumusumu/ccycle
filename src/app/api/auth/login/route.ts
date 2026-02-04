@@ -39,10 +39,20 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 登录成功，设置 cookie
+    // 登录成功，设置双重 cookie
     const cookieStore = await cookies();
+    
+    // 1. httpOnly cookie（服务端认证用，安全）
     cookieStore.set('ccycle_user_id', user.id, {
       httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 60 * 60 * 24 * 30, // 30天
+    });
+
+    // 2. 客户端可读 cookie（用于 localStorage key 生成，非敏感）
+    cookieStore.set('ccycle_user_id_client', user.id, {
+      httpOnly: false,  // 客户端可读
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
       maxAge: 60 * 60 * 24 * 30, // 30天

@@ -37,37 +37,54 @@
   --button-radius: 12px;
 }
 
+.dark {
+  /* Page Background */
+  --background: #1A202C;
+  --foreground: #E2E8F0;
+
+  /* Design System Colors */
+  --color-primary: #63B3ED;
+  --color-primary-dark: #4299E1;
+
+  /* Nutrition Colors (稍微调亮以适应深色背景) */
+  --color-carb: #FAD961;
+  --color-protein: #F5A7C7;
+  --color-fat: #B8E6C9;
+  --color-water: #8DD5ED;
+
+  /* Status Colors */
+  --color-success: #68D391;
+  --color-warning: #FC8181;
+  --color-muted: #4A5568;
+
+  /* Carb Day Colors */
+  --color-low-carb: #B8E6C9;
+  --color-medium-carb: #FAD961;
+  --color-high-carb: #FC8181;
+
+  /* Text Colors */
+  --color-title: #F7FAFC;
+  --color-body: #CBD5E0;
+  --color-placeholder: #718096;
+
+  /* Card */
+  --color-card: #2D3748;
+  --card-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --font-mono: var(--font-geist-mono);
-
-  /* Custom Colors */
-  --color-primary: #4A90D9;
-  --color-primary-dark: #357ABD;
-  --color-carb: #F5C542;
-  --color-protein: #E8A0BF;
-  --color-fat: #A8D5BA;
-  --color-water: #7EC8E3;
-  --color-success: #5CB85C;
-  --color-warning: #E74C3C;
-  --color-muted: #CCCCCC;
-  --color-low-carb: #A8D5BA;
-  --color-medium-carb: #F5C542;
-  --color-high-carb: #E74C3C;
-  --color-title: #2C3E50;
-  --color-body: #5D6D7E;
-  --color-placeholder: #AEB6BF;
-  --color-card: #FFFFFF;
-  --color-page-bg: #EEF2F7;
 }
 
 body {
   background: var(--background);
-  color: var(--color-body);
+  color: var(--foreground);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   min-height: 100vh;
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 /* Typography */

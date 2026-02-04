@@ -28,6 +28,9 @@ export async function GET() {
       include: {
         dailyMealPlans: {
           orderBy: { date: 'asc' },
+          include: {
+            intakeRecord: true, // 包含每天的摄入记录
+          },
         },
       },
     });

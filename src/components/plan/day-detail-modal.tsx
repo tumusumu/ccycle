@@ -1,8 +1,11 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
 import { TCarbDayType } from '@/types/plan';
 import { getCarbDayTypeName } from '@/utils/carbon-cycle';
 import { NutritionStatusIcon, getNutritionStatus } from '@/components/ui/nutrition-status-icon';
+import { formatDateFromDb } from '@/utils/date';
+import { Button } from '@/components/ui/button';
 
 export interface INutritionData {
   actual: number;
@@ -22,6 +25,12 @@ export interface IDayDetailData {
     strengthMinutes?: number;
     cardioMinutes?: number;
   };
+  dietRestrictions?: {
+    noFruit: boolean;
+    noSugar: boolean;
+    noWhiteFlour: boolean;
+  };
+  hasNoData?: boolean; // 是否没有数据（需要补充录入）
 }
 
 interface IDayDetailModalProps {
@@ -72,6 +81,8 @@ function NutritionRow({
 }
 
 export function DayDetailModal({ isOpen, onClose, data }: IDayDetailModalProps) {
+  const router = useRouter();
+
   if (!isOpen || !data) return null;
 
   const weekday = data.date.toLocaleDateString('zh-CN', { weekday: 'short' });
@@ -79,6 +90,12 @@ export function DayDetailModal({ isOpen, onClose, data }: IDayDetailModalProps) 
     month: 'numeric',
     day: 'numeric',
   });
+
+  // 跳转到历史记录补充页面
+  const handleNavigateToHistory = () => {
+    const targetDateStr = formatDateFromDb(data.date);
+    router.push(`/history/${targetDateStr}`);
+  };
 
   return (
     <>
@@ -110,61 +127,125 @@ export function DayDetailModal({ isOpen, onClose, data }: IDayDetailModalProps) 
 
         {/* Content */}
         <div className="p-4">
-          {/* Nutrition Section */}
-          <div className="mb-6">
-            <h4 className="text-sm font-medium text-[#2C3E50] mb-2 flex items-center gap-2">
-              <span>📊</span> 营养摄入
-            </h4>
-            <div className="bg-[#F8F9FA] rounded-xl p-3">
-              <NutritionRow
-                label="碳水"
-                actual={data.nutrition.carbs.actual}
-                target={data.nutrition.carbs.target}
-              />
-              <NutritionRow
-                label="蛋白质"
-                actual={data.nutrition.protein.actual}
-                target={data.nutrition.protein.target}
-              />
-              <NutritionRow
-                label="脂肪"
-                actual={data.nutrition.fat.actual}
-                target={data.nutrition.fat.target}
-              />
-              <NutritionRow
-                label="热量"
-                actual={data.nutrition.calories.actual}
-                target={data.nutrition.calories.target}
-                unit="kcal"
-              />
-            </div>
-          </div>
-
-          {/* Exercise Section */}
-          {data.exercise && (data.exercise.strengthMinutes || data.exercise.cardioMinutes) && (
-            <div>
-              <h4 className="text-sm font-medium text-[#2C3E50] mb-2 flex items-center gap-2">
-                <span>💪</span> 运动记录
-              </h4>
-              <div className="bg-[#F8F9FA] rounded-xl p-3 space-y-2">
-                {data.exercise.strengthMinutes && data.exercise.strengthMinutes > 0 && (
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-[#5D6D7E]">力量训练</span>
-                    <span className="text-[#2C3E50] font-medium">
-                      {data.exercise.strengthMinutes} 分钟
-                    </span>
-                  </div>
-                )}
-                {data.exercise.cardioMinutes && data.exercise.cardioMinutes > 0 && (
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-[#5D6D7E]">有氧训练</span>
-                    <span className="text-[#2C3E50] font-medium">
-                      {data.exercise.cardioMinutes} 分钟
-                    </span>
-                  </div>
-                )}
+          {data.hasNoData ? (
+            /* No Data State - 补充录入提示 */
+            <div className="text-center py-8">
+              <div className="w-16 h-16 mx-auto mb-4 bg-[#FFF4E5] rounded-full flex items-center justify-center">
+                <svg
+                  className="w-8 h-8 text-[#F5C542]"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                  />
+                </svg>
               </div>
+              <h3 className="text-base font-semibold text-[#2C3E50] mb-2">
+                这一天还没有记录
+              </h3>
+              <p className="text-sm text-[#5D6D7E] mb-6">
+                点击下方按钮补充当天的饮食和运动记录
+              </p>
+              <Button onClick={handleNavigateToHistory} className="w-full">
+                📝 补充录入打卡
+              </Button>
+              <p className="text-xs text-[#AEB6BF] mt-3 text-center">
+                可以补充该日的所有餐食和运动记录
+              </p>
             </div>
+          ) : (
+            <>
+              {/* Nutrition Section */}
+              <div className="mb-6">
+                <h4 className="text-sm font-medium text-[#2C3E50] mb-2 flex items-center gap-2">
+                  <span>📊</span> 营养摄入
+                </h4>
+                <div className="bg-[#F8F9FA] rounded-xl p-3">
+                  <NutritionRow
+                    label="碳水"
+                    actual={data.nutrition.carbs.actual}
+                    target={data.nutrition.carbs.target}
+                  />
+                  <NutritionRow
+                    label="蛋白质"
+                    actual={data.nutrition.protein.actual}
+                    target={data.nutrition.protein.target}
+                  />
+                  <NutritionRow
+                    label="脂肪"
+                    actual={data.nutrition.fat.actual}
+                    target={data.nutrition.fat.target}
+                  />
+                  <NutritionRow
+                    label="热量"
+                    actual={data.nutrition.calories.actual}
+                    target={data.nutrition.calories.target}
+                    unit="kcal"
+                  />
+                </div>
+              </div>
+
+              {/* Exercise Section */}
+              {data.exercise && (data.exercise.strengthMinutes || data.exercise.cardioMinutes) && (
+                <div className="mb-6">
+                  <h4 className="text-sm font-medium text-[#2C3E50] mb-2 flex items-center gap-2">
+                    <span>💪</span> 运动记录
+                  </h4>
+                  <div className="bg-[#F8F9FA] rounded-xl p-3 space-y-2">
+                    {data.exercise.strengthMinutes && data.exercise.strengthMinutes > 0 && (
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-[#5D6D7E]">力量训练</span>
+                        <span className="text-[#2C3E50] font-medium">
+                          {data.exercise.strengthMinutes} 分钟
+                        </span>
+                      </div>
+                    )}
+                    {data.exercise.cardioMinutes && data.exercise.cardioMinutes > 0 && (
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-[#5D6D7E]">有氧训练</span>
+                        <span className="text-[#2C3E50] font-medium">
+                          {data.exercise.cardioMinutes} 分钟
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Diet Restrictions Section (第一个月饮食禁忌) */}
+              {data.dietRestrictions && (
+                <div>
+                  <h4 className="text-sm font-medium text-[#2C3E50] mb-2 flex items-center gap-2">
+                    <span>🎯</span> 控糖打卡
+                  </h4>
+                  <div className="bg-[#F8F9FA] rounded-xl p-3 space-y-2">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-[#5D6D7E]">🍎 没有吃水果</span>
+                      <span className={`font-medium ${data.dietRestrictions.noFruit ? 'text-[#27AE60]' : 'text-[#95A5A6]'}`}>
+                        {data.dietRestrictions.noFruit ? '✓ 已确认' : '未确认'}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-[#5D6D7E]">🍬 没有吃糖</span>
+                      <span className={`font-medium ${data.dietRestrictions.noSugar ? 'text-[#27AE60]' : 'text-[#95A5A6]'}`}>
+                        {data.dietRestrictions.noSugar ? '✓ 已确认' : '未确认'}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-[#5D6D7E]">🍞 没有吃白面</span>
+                      <span className={`font-medium ${data.dietRestrictions.noWhiteFlour ? 'text-[#27AE60]' : 'text-[#95A5A6]'}`}>
+                        {data.dietRestrictions.noWhiteFlour ? '✓ 已确认' : '未确认'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>

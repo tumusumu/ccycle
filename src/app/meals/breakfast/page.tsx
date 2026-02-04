@@ -1,15 +1,17 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
+import { Suspense, useState, useEffect, useCallback } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useIntake } from '@/context/intake-context';
 import { TCarbDayType } from '@/types/plan';
 import { getReferencePortions } from '@/lib/nutrition-calculator';
 
-export default function BreakfastPage() {
+function BreakfastContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const targetDate = searchParams.get('date'); // 获取URL参数中的日期
   const { intake, saveToDatabase } = useIntake();
   const [isSaving, setIsSaving] = useState(false);
   const [carbDayType, setCarbDayType] = useState<TCarbDayType>('LOW');
@@ -56,14 +58,37 @@ export default function BreakfastPage() {
 
   const handleSubmit = async () => {
     setIsSaving(true);
-    await saveToDatabase({
-      oatmealGrams,
-      wholeEggs,
-      whiteOnlyEggs,
-      breakfastCompleted: true,
-    });
+    
+    if (targetDate) {
+      // 保存历史日期数据
+      try {
+        await fetch(`/api/intake-history/${targetDate}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            oatmealGrams,
+            wholeEggs,
+            whiteOnlyEggs,
+            breakfastCompleted: true,
+          }),
+        });
+        // 返回到历史记录页面
+        router.push(`/history/${targetDate}`);
+      } catch (err) {
+        console.error('保存失败:', err);
+      }
+    } else {
+      // 保存今天的数据（原逻辑）
+      await saveToDatabase({
+        oatmealGrams,
+        wholeEggs,
+        whiteOnlyEggs,
+        breakfastCompleted: true,
+      });
+      router.push('/dashboard');
+    }
+    
     setIsSaving(false);
-    router.push('/dashboard');
   };
 
   const refs = getReferencePortions(carbDayType);
@@ -75,6 +100,13 @@ export default function BreakfastPage() {
       </div>
     );
   }
+
+  // 格式化历史日期显示
+  const historicalDateText = targetDate ? new Date(targetDate + 'T00:00:00').toLocaleDateString('zh-CN', {
+    month: 'long',
+    day: 'numeric',
+    weekday: 'short',
+  }) : null;
 
   return (
     <div className="min-h-screen bg-[#EEF2F7]">
@@ -89,6 +121,23 @@ export default function BreakfastPage() {
       </header>
 
       <div className="pt-14 pb-24 px-4">
+        {/* 历史记录补充提示 */}
+        {targetDate && (
+          <Card className="mt-4 !p-3 bg-[#FFF9E6] border-[#F5C542]">
+            <div className="flex items-start gap-2">
+              <span className="text-lg">📅</span>
+              <div className="flex-1">
+                <h3 className="text-sm font-semibold text-[#2C3E50] mb-1">
+                  补充历史记录
+                </h3>
+                <p className="text-xs text-[#5D6D7E]">
+                  正在为 <span className="font-medium">{historicalDateText}</span> 补充早餐记录
+                </p>
+              </div>
+            </div>
+          </Card>
+        )}
+
         {/* Oatmeal Section */}
         <Card className="mt-4 !p-4">
           <div className="mb-4">
@@ -161,5 +210,13 @@ export default function BreakfastPage() {
         </Button>
       </div>
     </div>
+  );
+}
+
+export default function BreakfastPage() {
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center min-h-screen">加载中...</div>}>
+      <BreakfastContent />
+    </Suspense>
   );
 }

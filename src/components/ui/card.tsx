@@ -8,6 +8,7 @@ export interface ICardProps {
   variant?: 'default' | 'highlight' | 'warning' | 'success';
   className?: string;
   children: ReactNode;
+  onClick?: () => void;
 }
 
 const variantStyles = {
@@ -23,6 +24,7 @@ export function Card({
   variant = 'default',
   className = '',
   children,
+  onClick,
 }: ICardProps) {
   return (
     <div
@@ -30,10 +32,12 @@ export function Card({
         rounded-[16px] p-4
         ${variantStyles[variant]}
         ${className}
+        ${onClick ? 'cursor-pointer' : ''}
       `}
       style={{
         boxShadow: variant === 'default' ? '0 2px 8px rgba(0,0,0,0.06)' : undefined,
       }}
+      onClick={onClick}
     >
       {title && (
         <h3 className="mb-1 text-lg font-semibold text-[#2C3E50]">{title}</h3>

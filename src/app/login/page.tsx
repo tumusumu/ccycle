@@ -8,7 +8,7 @@ import { PageContainer } from '@/components/layout/page-container';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
-import { setCurrentUserId } from '@/hooks/use-current-user';
+// setCurrentUserId 已废弃，服务端自动设置 cookie
 
 export default function LoginPage() {
   const router = useRouter();
@@ -120,8 +120,7 @@ export default function LoginPage() {
       const data = await res.json();
 
       if (res.ok && data.userId) {
-        // 登录成功，设置用户ID
-        setCurrentUserId(data.userId);
+        // 登录成功（服务端已设置 cookie）
         // 根据用户状态决定跳转位置
         await redirectAfterLogin(data.userId);
       } else {

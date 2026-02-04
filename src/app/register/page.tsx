@@ -7,7 +7,7 @@ import { PageContainer } from '@/components/layout/page-container';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
-import { setCurrentUserId } from '@/hooks/use-current-user';
+// setCurrentUserId 已废弃，服务端自动设置 cookie
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -249,8 +249,7 @@ export default function RegisterPage() {
       const data = await res.json();
 
       if (res.ok && data.userId) {
-        // 注册成功，设置用户ID并跳转到 onboarding
-        setCurrentUserId(data.userId);
+        // 注册成功（服务端已自动设置 cookie）并跳转到 onboarding
         router.push('/onboarding');
       } else {
         setErrors({ submit: data.error || '注册失败，请稍后再试' });

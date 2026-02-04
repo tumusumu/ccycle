@@ -1,62 +1,26 @@
-/**
- * Today's Intake API Routes
- * GET: Get today's intake record with actual values
- * PUT: Update today's intake record with actual values
- */
-
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/auth';
-import { getToday } from '@/utils/date';
+import { parseDate } from '@/utils/date';
 
-interface IActualIntakeInput {
-  // Breakfast
-  oatmealGrams?: number;
-  wholeEggs?: number;
-  whiteOnlyEggs?: number;
-  breakfastCompleted?: boolean;
-  // Lunch
-  lunchRiceGrams?: number;
-  lunchMeatType?: string;
-  lunchMeatGrams?: number;
-  lunchOliveOilMl?: number;
-  lunchCompleted?: boolean;
-  // Snack
-  snackRiceGrams?: number;
-  snackMeatType?: string;
-  snackMeatGrams?: number;
-  snackCompleted?: boolean;
-  // Dinner
-  dinnerRiceGrams?: number;
-  dinnerMeatType?: string;
-  dinnerMeatGrams?: number;
-  dinnerOliveOilMl?: number;
-  dinnerCompleted?: boolean;
-  // Exercise
-  strengthMinutes?: number;
-  strengthCompleted?: boolean;
-  cardioMinutes?: number;
-  cardioCompleted?: boolean;
-  // Diet Restrictions (控糖打卡)
-  noFruit?: boolean;
-  noSugar?: boolean;
-  noWhiteFlour?: boolean;
+interface RouteParams {
+  params: Promise<{
+    date: string;
+  }>;
 }
 
-export async function GET() {
+// GET - 获取指定日期的摄入记录
+export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
     const user = await getCurrentUser();
-
     if (!user) {
-      return NextResponse.json({
-        ok: false,
-        code: 'NO_USER',
-        dailyMealPlanId: null,
-        intake: null,
-      });
+      return NextResponse.json({ error: '未授权' }, { status: 401 });
     }
 
-    // Get active plan
+    const { date: dateStr } = await params;
+    const targetDate = parseDate(dateStr);
+
+    // 获取活跃的计划
     const plan = await prisma.cyclePlan.findFirst({
       where: {
         userId: user.id,
@@ -65,21 +29,17 @@ export async function GET() {
     });
 
     if (!plan) {
-      return NextResponse.json({
-        ok: false,
-        code: 'NO_PLAN',
-        dailyMealPlanId: null,
-        intake: null,
-      });
+      return NextResponse.json(
+        { error: '没有活跃的计划', code: 'NO_PLAN' },
+        { status: 404 }
+      );
     }
 
-    const today = getToday();
-
-    // Find today's meal plan
+    // 查找该日期的 DailyMealPlan
     const mealPlan = await prisma.dailyMealPlan.findFirst({
       where: {
         cyclePlanId: plan.id,
-        date: today,
+        date: targetDate,
       },
       include: {
         intakeRecord: true,
@@ -87,25 +47,23 @@ export async function GET() {
     });
 
     if (!mealPlan) {
-      return NextResponse.json({
-        ok: false,
-        code: 'NO_MEAL_PLAN',
-        dailyMealPlanId: null,
-        intake: null,
-      });
+      return NextResponse.json(
+        { error: '该日期没有饮食计划', code: 'NO_MEAL_PLAN' },
+        { status: 404 }
+      );
     }
 
-    // Get exercise record for today
+    // 获取运动记录
     const exerciseRecord = await prisma.exerciseRecord.findUnique({
       where: {
         userId_date: {
           userId: user.id,
-          date: today,
+          date: targetDate,
         },
       },
     });
 
-    // Build intake response from database records
+    // 构建 intake 响应
     const intake = mealPlan.intakeRecord;
 
     return NextResponse.json({
@@ -138,7 +96,7 @@ export async function GET() {
         // Exercise
         strengthMinutes: exerciseRecord?.strengthCompleted ? (intake.actualStrengthMinutes ?? 0) : 0,
         strengthCompleted: exerciseRecord?.strengthCompleted ?? false,
-        cardioMinutes: exerciseRecord?.cardioSession1 || exerciseRecord?.cardioSession2
+        cardioMinutes: (exerciseRecord?.cardioSession1 || exerciseRecord?.cardioSession2)
           ? (intake.actualCardioMinutes ?? exerciseRecord?.cardioMinutes ?? 0)
           : 0,
         cardioCompleted: (exerciseRecord?.cardioSession1 || exerciseRecord?.cardioSession2) ?? false,
@@ -150,28 +108,27 @@ export async function GET() {
       } : null,
     });
   } catch (error) {
-    console.error('Error fetching today\'s intake:', error);
+    console.error('获取历史记录失败:', error);
     return NextResponse.json(
-      { error: 'Failed to fetch today\'s intake' },
+      { error: '服务器错误' },
       { status: 500 }
     );
   }
 }
 
-export async function PUT(request: NextRequest) {
+// PUT - 更新指定日期的摄入记录
+export async function PUT(request: NextRequest, { params }: RouteParams) {
   try {
-    const body = (await request.json()) as IActualIntakeInput;
-
     const user = await getCurrentUser();
-
     if (!user) {
-      return NextResponse.json(
-        { error: 'User not found', code: 'NO_USER' },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: '未授权' }, { status: 401 });
     }
 
-    // Get active plan
+    const { date: dateStr } = await params;
+    const targetDate = parseDate(dateStr);
+    const body = await request.json();
+
+    // 获取活跃的计划
     const plan = await prisma.cyclePlan.findFirst({
       where: {
         userId: user.id,
@@ -181,114 +138,72 @@ export async function PUT(request: NextRequest) {
 
     if (!plan) {
       return NextResponse.json(
-        { error: 'No active plan found' },
+        { error: '没有活跃的计划', code: 'NO_PLAN' },
         { status: 404 }
       );
     }
 
-    const today = getToday();
-
-    // Find today's meal plan
+    // 查找该日期的 DailyMealPlan
     const mealPlan = await prisma.dailyMealPlan.findFirst({
       where: {
         cyclePlanId: plan.id,
-        date: today,
+        date: targetDate,
       },
     });
 
     if (!mealPlan) {
       return NextResponse.json(
-        { error: 'No meal plan found for today' },
+        { error: '该日期没有饮食计划', code: 'NO_MEAL_PLAN' },
         { status: 404 }
       );
     }
 
-    // Build update data for intake record
+    // 构建更新数据
     const intakeUpdateData: Record<string, boolean | number | string | null> = {};
 
     // Breakfast
-    if (body.oatmealGrams !== undefined) {
-      intakeUpdateData.actualOatmealGrams = body.oatmealGrams;
-    }
-    if (body.wholeEggs !== undefined) {
-      intakeUpdateData.actualWholeEggs = body.wholeEggs;
-    }
-    if (body.whiteOnlyEggs !== undefined) {
-      intakeUpdateData.actualWhiteOnlyEggs = body.whiteOnlyEggs;
-    }
+    if (body.oatmealGrams !== undefined) intakeUpdateData.actualOatmealGrams = body.oatmealGrams;
+    if (body.wholeEggs !== undefined) intakeUpdateData.actualWholeEggs = body.wholeEggs;
+    if (body.whiteOnlyEggs !== undefined) intakeUpdateData.actualWhiteOnlyEggs = body.whiteOnlyEggs;
     if (body.breakfastCompleted !== undefined) {
       intakeUpdateData.oatmealCompleted = body.breakfastCompleted;
       intakeUpdateData.protein1Completed = body.breakfastCompleted;
     }
 
     // Lunch
-    if (body.lunchRiceGrams !== undefined) {
-      intakeUpdateData.actualLunchRiceGrams = body.lunchRiceGrams;
-    }
-    if (body.lunchMeatType !== undefined) {
-      intakeUpdateData.actualLunchMeatType = body.lunchMeatType;
-    }
-    if (body.lunchMeatGrams !== undefined) {
-      intakeUpdateData.actualLunchMeatGrams = body.lunchMeatGrams;
-    }
-    if (body.lunchOliveOilMl !== undefined) {
-      intakeUpdateData.actualLunchOliveOilMl = body.lunchOliveOilMl;
-    }
+    if (body.lunchRiceGrams !== undefined) intakeUpdateData.actualLunchRiceGrams = body.lunchRiceGrams;
+    if (body.lunchMeatType !== undefined) intakeUpdateData.actualLunchMeatType = body.lunchMeatType;
+    if (body.lunchMeatGrams !== undefined) intakeUpdateData.actualLunchMeatGrams = body.lunchMeatGrams;
+    if (body.lunchOliveOilMl !== undefined) intakeUpdateData.actualLunchOliveOilMl = body.lunchOliveOilMl;
     if (body.lunchCompleted !== undefined) {
       intakeUpdateData.riceLunchCompleted = body.lunchCompleted;
       intakeUpdateData.protein2Completed = body.lunchCompleted;
     }
 
     // Snack
-    if (body.snackRiceGrams !== undefined) {
-      intakeUpdateData.actualSnackRiceGrams = body.snackRiceGrams;
-    }
-    if (body.snackMeatType !== undefined) {
-      intakeUpdateData.actualSnackProteinType = body.snackMeatType;
-    }
-    if (body.snackMeatGrams !== undefined) {
-      intakeUpdateData.actualSnackProteinGrams = body.snackMeatGrams;
-    }
-    if (body.snackCompleted !== undefined) {
-      intakeUpdateData.protein3Completed = body.snackCompleted;
-    }
+    if (body.snackRiceGrams !== undefined) intakeUpdateData.actualSnackRiceGrams = body.snackRiceGrams;
+    if (body.snackMeatType !== undefined) intakeUpdateData.actualSnackProteinType = body.snackMeatType;
+    if (body.snackMeatGrams !== undefined) intakeUpdateData.actualSnackProteinGrams = body.snackMeatGrams;
+    if (body.snackCompleted !== undefined) intakeUpdateData.protein3Completed = body.snackCompleted;
 
     // Dinner
-    if (body.dinnerRiceGrams !== undefined) {
-      intakeUpdateData.actualDinnerRiceGrams = body.dinnerRiceGrams;
-    }
-    if (body.dinnerMeatType !== undefined) {
-      intakeUpdateData.actualDinnerMeatType = body.dinnerMeatType;
-    }
-    if (body.dinnerMeatGrams !== undefined) {
-      intakeUpdateData.actualDinnerMeatGrams = body.dinnerMeatGrams;
-    }
-    if (body.dinnerOliveOilMl !== undefined) {
-      intakeUpdateData.actualDinnerOliveOilMl = body.dinnerOliveOilMl;
-    }
+    if (body.dinnerRiceGrams !== undefined) intakeUpdateData.actualDinnerRiceGrams = body.dinnerRiceGrams;
+    if (body.dinnerMeatType !== undefined) intakeUpdateData.actualDinnerMeatType = body.dinnerMeatType;
+    if (body.dinnerMeatGrams !== undefined) intakeUpdateData.actualDinnerMeatGrams = body.dinnerMeatGrams;
+    if (body.dinnerOliveOilMl !== undefined) intakeUpdateData.actualDinnerOliveOilMl = body.dinnerOliveOilMl;
     if (body.dinnerCompleted !== undefined) {
       intakeUpdateData.riceDinnerCompleted = body.dinnerCompleted;
       intakeUpdateData.protein4Completed = body.dinnerCompleted;
     }
 
-    // Exercise minutes (stored in intake record)
-    if (body.strengthMinutes !== undefined) {
-      intakeUpdateData.actualStrengthMinutes = body.strengthMinutes;
-    }
-    if (body.cardioMinutes !== undefined) {
-      intakeUpdateData.actualCardioMinutes = body.cardioMinutes;
-    }
+    // Exercise minutes
+    if (body.strengthMinutes !== undefined) intakeUpdateData.actualStrengthMinutes = body.strengthMinutes;
+    if (body.cardioMinutes !== undefined) intakeUpdateData.actualCardioMinutes = body.cardioMinutes;
 
     // Diet restrictions (控糖打卡)
-    if (body.noFruit !== undefined) {
-      intakeUpdateData.noFruitConfirmed = body.noFruit;
-    }
-    if (body.noSugar !== undefined) {
-      intakeUpdateData.noSugarConfirmed = body.noSugar;
-    }
-    if (body.noWhiteFlour !== undefined) {
-      intakeUpdateData.noWhiteFlourConfirmed = body.noWhiteFlour;
-    }
+    if (body.noFruit !== undefined) intakeUpdateData.noFruitConfirmed = body.noFruit;
+    if (body.noSugar !== undefined) intakeUpdateData.noSugarConfirmed = body.noSugar;
+    if (body.noWhiteFlour !== undefined) intakeUpdateData.noWhiteFlourConfirmed = body.noWhiteFlour;
 
     // Upsert intake record
     const intakeRecord = await prisma.dailyIntakeRecord.upsert({
@@ -300,13 +215,13 @@ export async function PUT(request: NextRequest) {
       },
     });
 
-    // Update exercise record if exercise data is provided
+    // 更新运动记录（如果有运动数据）
     if (body.strengthCompleted !== undefined || body.cardioCompleted !== undefined) {
       await prisma.exerciseRecord.upsert({
         where: {
           userId_date: {
             userId: user.id,
-            date: today,
+            date: targetDate,
           },
         },
         update: {
@@ -322,7 +237,7 @@ export async function PUT(request: NextRequest) {
         },
         create: {
           userId: user.id,
-          date: today,
+          date: targetDate,
           strengthCompleted: body.strengthCompleted ?? false,
           cardioSession1: body.cardioCompleted ?? false,
           cardioMinutes: body.cardioMinutes,
@@ -336,9 +251,9 @@ export async function PUT(request: NextRequest) {
       intakeRecord,
     });
   } catch (error) {
-    console.error('Error updating today\'s intake:', error);
+    console.error('保存历史记录失败:', error);
     return NextResponse.json(
-      { error: 'Failed to update today\'s intake' },
+      { error: '服务器错误' },
       { status: 500 }
     );
   }
