@@ -1,4 +1,4 @@
-# ccycle 开发进度记录
+# 碳循ccycle 开发进度记录
 
 > 最后更新: 2026-02-04 (v1.0.0 MVP)
 > 生产环境: https://ccycle.vercel.app

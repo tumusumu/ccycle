@@ -159,7 +159,7 @@ export default function LoginPage() {
               priority
             />
           </div>
-          <h1 className="text-xl font-semibold text-[#2C3E50] mb-1">112113碳循环</h1>
+          <h1 className="text-xl font-semibold text-[#2C3E50] mb-1">碳循ccycle</h1>
           <p className="text-[#5D6D7E] text-sm">登录您的账户</p>
         </div>
 
