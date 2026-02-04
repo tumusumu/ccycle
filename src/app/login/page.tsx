@@ -152,7 +152,7 @@ export default function LoginPage() {
           <div className="mx-auto mb-3 w-20 h-20 rounded-2xl bg-[#EEF2F7] flex items-center justify-center">
             <Image
               src="/logo.png"
-              alt="CCycle"
+              alt="ccycle"
               width={72}
               height={72}
               className="object-contain"

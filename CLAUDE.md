@@ -1,4 +1,4 @@
-# CCycle 碳循112
+# ccycle 碳循112
 
 > 碳循环饮食计算与跟踪APP，移动端优先设计，帮助用户制定个人碳水循环饮食方案，并追踪每日营养摄入。
 
@@ -6,7 +6,7 @@
 
 ## 项目信息
 - **中文名:** 碳循112
-- **英文名:** CCycle
+- **英文名:** ccycle
 - **英文域名/包名:** ccycle
 - **设计理念:** 移动端优先，PWA 支持，简洁直观
 
@@ -209,8 +209,8 @@ public/
 ### Manifest.json 配置
 ```json
 {
-  "name": "CCycle - 碳水循环追踪",
-  "short_name": "CCycle",
+  "name": "ccycle - 碳水循环追踪",
+  "short_name": "ccycle",
   "description": "智能碳水循环营养追踪应用",
   "start_url": "/",
   "display": "standalone",
@@ -242,7 +242,7 @@ public/
   <link rel="manifest" href="/manifest.json" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-  <meta name="apple-mobile-web-app-title" content="CCycle" />
+  <meta name="apple-mobile-web-app-title" content="ccycle" />
   <link rel="apple-touch-icon" href="/icon-192.png" />
 </head>
 ```

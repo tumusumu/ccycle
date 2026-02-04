@@ -19,7 +19,7 @@ export default function SettingsPage() {
           <div className="space-y-2 text-sm text-[var(--color-body)]">
             <div className="flex justify-between">
               <span>应用名称</span>
-              <span className="font-medium">CCycle 碳循112</span>
+              <span className="font-medium">ccycle 碳循112</span>
             </div>
             <div className="flex justify-between">
               <span>版本号</span>

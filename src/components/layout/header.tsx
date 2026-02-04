@@ -100,7 +100,7 @@ export function Header({
             <Link href="/dashboard" className="flex items-center gap-3">
               <Image
                 src="/logo.png"
-                alt="CCycle Logo"
+                alt="ccycle Logo"
                 width={40}
                 height={40}
                 className="rounded-lg"

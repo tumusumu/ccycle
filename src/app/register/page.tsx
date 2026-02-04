@@ -299,7 +299,7 @@ export default function RegisterPage() {
         {/* 标题 */}
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-[#2C3E50]">创建账户</h1>
-          <p className="text-[#5D6D7E] mt-2">加入 CCycle 开始您的健康之旅</p>
+          <p className="text-[#5D6D7E] mt-2">加入 ccycle 开始您的健康之旅</p>
         </div>
 
         {/* 错误提示 */}

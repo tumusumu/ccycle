@@ -1,4 +1,4 @@
-# CCycle 部署检查清单
+# ccycle 部署检查清单
 
 ## ✅ 已完成的检查项
 
@@ -203,7 +203,7 @@ npx prisma migrate deploy
 ## 📝 发布说明模板
 
 ```markdown
-# CCycle v1.0.0 - 碳循环饮食追踪 MVP
+# ccycle v1.0.0 - 碳循环饮食追踪 MVP
 
 ## 🎉 首次发布
 

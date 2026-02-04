@@ -1,6 +1,6 @@
 {
-  "name": "CCycle - 碳水循环追踪",
-  "short_name": "CCycle",
+  "name": "ccycle - 碳水循环追踪",
+  "short_name": "ccycle",
   "description": "智能碳水循环营养追踪应用",
   "start_url": "/",
   "display": "standalone",

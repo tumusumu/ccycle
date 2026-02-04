@@ -1,4 +1,4 @@
-# 碳循112 (CCycle)
+# 碳循112 (ccycle)
 
 <div align="center">
 
