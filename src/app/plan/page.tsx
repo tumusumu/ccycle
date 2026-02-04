@@ -450,7 +450,7 @@ export default function PlanPage() {
 
   return (
     <>
-      <Header showBack title="我的计划" />
+      <Header showBack title="我的计划" showLogout />
 
       <PageContainer className="pt-16 pb-24">
         {/* Cycle Navigation */}
