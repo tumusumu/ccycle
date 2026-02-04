@@ -1,0 +1,29 @@
+# --- Custom Skills / Commands ---
+
+# 1. 技能：代码审查
+# Usage: 输入 "/code-review"
+If I ask for a "/code-review":
+  - Act as a senior tech lead.
+  - Review the current changes or selected code for bugs, security issues, and readability.
+  - Provide a bulleted list of critical issues first, then suggestions.
+
+# 2. 技能：代码精简
+# Usage: 输入 "/simplify"
+If I ask to "/simplify":
+  - Analyze the logic flow.
+  - Suggest a refactored version that achieves the EXACT same result but with fewer lines.
+  - Remove redundant variables or loops.
+
+# 3. 技能：去除废话
+# Usage: 输入 "/deslop"
+If I ask to "/deslop":
+  - Remove console.logs, commented-out code, and redundant comments.
+  - Fix indentation.
+
+# 4. 技能：智能提交 (Agent 模式核心)
+# Usage: 输入 "/commit-pr"
+If I ask to "/commit-pr":
+  - Review all unstaged changes.
+  - Group changes into logical, atomic commits.
+  - Write conventional commit messages (feat:, fix:).
+  - Propose the git commands to stage and commit them.
