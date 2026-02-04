@@ -219,7 +219,7 @@ export function DayDetailModal({ isOpen, onClose, data }: IDayDetailModalProps) 
 
               {/* Diet Restrictions Section (第一个月饮食禁忌) */}
               {data.dietRestrictions && (
-                <div>
+                <div className="mb-6">
                   <h4 className="text-sm font-medium text-[#2C3E50] mb-2 flex items-center gap-2">
                     <span>🎯</span> 控糖打卡
                   </h4>
@@ -245,6 +245,20 @@ export function DayDetailModal({ isOpen, onClose, data }: IDayDetailModalProps) 
                   </div>
                 </div>
               )}
+
+              {/* Edit Button - 编辑/补打卡按钮 */}
+              <div className="mt-6 pt-4 border-t border-[#EEF2F7]">
+                <Button 
+                  onClick={handleNavigateToHistory} 
+                  className="w-full"
+                  variant="primary"
+                >
+                  ✏️ 编辑修改数据
+                </Button>
+                <p className="text-xs text-[#AEB6BF] mt-3 text-center">
+                  可以修改餐食记录、运动数据和控糖打卡
+                </p>
+              </div>
             </>
           )}
         </div>
