@@ -9,7 +9,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/auth';
-import { subtractDays } from '@/utils/date';
+import { subtractDays, getToday, getDaysBetween } from '@/utils/date';
 import { calculateBMI } from '@/utils/bmi';
 
 interface TrendPoint {
@@ -41,7 +41,7 @@ export async function GET(request: NextRequest) {
     const period = searchParams.get('period') || 'month';
 
     // Calculate date range
-    const today = new Date();
+    const today = getToday();
     let startDate: Date | undefined;
 
     switch (period) {
@@ -91,10 +91,10 @@ export async function GET(request: NextRequest) {
 
     for (const m of metrics) {
       const date = new Date(m.date);
-      // Get Monday of the week
-      const day = date.getDay();
+      // Get Monday of the week (using UTC to avoid timezone issues)
+      const day = date.getUTCDay();
       const monday = new Date(date);
-      monday.setDate(date.getDate() - (day === 0 ? 6 : day - 1));
+      monday.setUTCDate(date.getUTCDate() - (day === 0 ? 6 : day - 1));
       const weekKey = monday.toISOString().split('T')[0];
 
       if (!weekMap.has(weekKey)) {
@@ -124,9 +124,7 @@ export async function GET(request: NextRequest) {
     // Calculate summary stats
     const first = metrics[0];
     const last = metrics[metrics.length - 1];
-    const daysBetween = Math.ceil(
-      (new Date(last.date).getTime() - new Date(first.date).getTime()) / (1000 * 60 * 60 * 24)
-    );
+    const daysBetween = getDaysBetween(first.date, last.date);
 
     const summary = {
       totalRecords: metrics.length,

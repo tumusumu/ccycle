@@ -9,6 +9,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/auth';
 import { TPlanStatus } from '@/types/plan';
+import { parseDate, getToday } from '@/utils/date';
 
 interface RouteParams {
   params: Promise<{
@@ -105,7 +106,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       where: { id },
       data: {
         ...(body.status && { status: body.status }),
-        ...(body.endDate && { endDate: new Date(body.endDate) }),
+        ...(body.endDate && { endDate: parseDate(body.endDate) }),
       },
     });
 
@@ -155,7 +156,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       where: { id },
       data: {
         status: 'CANCELLED',
-        endDate: new Date(),
+        endDate: getToday(),
       },
     });
 
