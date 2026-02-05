@@ -48,7 +48,8 @@ export interface IBodyMetrics {
 export interface IBodyMetricsInput {
   weight: number;
   bodyFatPercentage?: number;
-  date?: Date; // defaults to today
+  /** 记录日期，客户端应传本地日历日 YYYY-MM-DD 字符串，避免时区导致错日 */
+  date?: Date | string;
 }
 
 export interface IBodyMetricsHistory {

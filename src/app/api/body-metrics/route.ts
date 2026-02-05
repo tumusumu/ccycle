@@ -124,15 +124,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Parse date - handle both Date objects (serialized as ISO string) and date strings
-    let date: Date;
-    if (body.date) {
-      const dateInput = new Date(body.date);
-      // Normalize to local midnight to avoid timezone issues
-      date = new Date(dateInput.getFullYear(), dateInput.getMonth(), dateInput.getDate(), 0, 0, 0, 0);
-    } else {
-      date = getToday();
-    }
+    // 日期以客户端传来的本地日历日 YYYY-MM-DD 为准，用 parseDate 转为 UTC 午夜再存库
+    const YYYY_MM_DD = /^\d{4}-\d{2}-\d{2}$/;
+    const date: Date =
+      typeof body.date === 'string' && YYYY_MM_DD.test(body.date)
+        ? parseDate(body.date)
+        : getToday();
 
     // Upsert body metrics for the date
     const metrics = await prisma.bodyMetrics.upsert({

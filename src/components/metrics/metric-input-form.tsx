@@ -54,18 +54,17 @@ export function MetricInputForm({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Parse date string to local Date object
-    let parsedDate: Date | undefined;
-    if (showDatePicker && selectedDate) {
-      const [year, month, day] = selectedDate.split('-').map(Number);
-      parsedDate = new Date(year, month - 1, day, 0, 0, 0, 0);
-    }
+    // 始终传本地日历日 YYYY-MM-DD，避免 Date 序列化为 UTC 导致错日
+    const dateStr =
+      showDatePicker && selectedDate
+        ? selectedDate
+        : formatDateForInput(new Date());
 
     onSubmit({
       weight,
       // Convert percentage (20) to decimal (0.20) for API
       bodyFatPercentage: bodyFat > 0 ? bodyFat / 100 : undefined,
-      date: parsedDate,
+      date: dateStr,
     });
   };
 
